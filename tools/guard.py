@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from qa import gate  # noqa: E402
+from qa.audio import inventory  # noqa: E402
 from qa.gfxinfo import parse_framestats  # noqa: E402
 from qa.rtp import measure, read_rounds  # noqa: E402
 
@@ -23,8 +24,13 @@ def main() -> int:
     cfg = gate.load_config(ROOT / "config.json")
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     sim = measure(read_rounds(FIXTURES / "simulation.csv"))
+    clips = inventory(FIXTURES / "audio")
 
-    baseline = gate.check_frames(frames, cfg) + gate.check_simulation(sim, cfg)
+    baseline = (
+        gate.check_frames(frames, cfg)
+        + gate.check_simulation(sim, cfg)
+        + gate.check_audio(clips, cfg)
+    )
     if not all(c.passed for c in baseline):
         print("RESULT guard=broken reason=baseline_fails", file=sys.stderr)
         return 1
@@ -33,7 +39,12 @@ def main() -> int:
     strict["perf"]["max_jank_pct"] = 0.5
     strict["simulation"]["rtp_min"] = 0.99
     strict["simulation"]["rtp_max"] = 0.995
-    tightened = gate.check_frames(frames, strict) + gate.check_simulation(sim, strict)
+    strict["audio"]["min_rms_db"] = -3.0          # every real clip is quieter than this
+    tightened = (
+        gate.check_frames(frames, strict)
+        + gate.check_simulation(sim, strict)
+        + gate.check_audio(clips, strict)
+    )
     failed = [c.name for c in tightened if not c.passed]
     if not failed:
         print("RESULT guard=broken reason=tightened_limits_still_pass", file=sys.stderr)

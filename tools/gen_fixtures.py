@@ -9,7 +9,11 @@ seed must always produce the same bytes, or the numbers in the README are lies.
 from __future__ import annotations
 
 import argparse
+import array
+import io
+import math
 import random
+import wave
 import sys
 from pathlib import Path
 
@@ -56,6 +60,37 @@ def simulation_csv() -> str:
             win = 0
         lines.append(f"{index + 1},{bet},{win}")
     return "\n".join(lines) + "\n"
+
+
+def audio_clips() -> dict[str, bytes]:
+    """Three short WAVs, generated with the standard library.
+
+    A gate needs material it can fail on, so the tonal balance matters: a spin loop, a
+    win jingle, and a short click. All three sit below full scale, so a passing run
+    proves the gate reads the samples instead of trusting the file name.
+    """
+    specs = (
+        ("audio_spin.wav", 0.40, 330.0, 0.35),
+        ("audio_win.wav", 0.80, 523.25, 0.45),
+        ("audio_click.wav", 0.05, 1000.0, 0.30),
+    )
+    rate = 22050
+    clips: dict[str, bytes] = {}
+    for name, seconds, frequency, amplitude in specs:
+        frames = int(rate * seconds)
+        buffer = array.array("h")
+        for index in range(frames):
+            envelope = 1.0 - index / frames
+            value = amplitude * envelope * math.sin(2 * math.pi * frequency * index / rate)
+            buffer.append(int(value * 32767))
+        with io.BytesIO() as sink:
+            with wave.open(sink, "wb") as handle:
+                handle.setnchannels(1)
+                handle.setsampwidth(2)
+                handle.setframerate(rate)
+                handle.writeframes(buffer.tobytes())
+            clips[f"audio/{name}"] = sink.getvalue()
+    return clips
 
 
 def framestats() -> str:
@@ -111,6 +146,7 @@ FILES = {
     "simulation.csv": simulation_csv,
     "gfxinfo_framestats.txt": framestats,
     "gfxinfo_summary.txt": summary,
+    "audio": audio_clips,
 }
 
 
@@ -119,21 +155,35 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="verify committed fixtures match the generator")
     args = parser.parse_args()
     FIXTURES.mkdir(parents=True, exist_ok=True)
-    drift = []
-    for name, builder in FILES.items():
+    drift: list[str] = []
+    written = 0
+
+    def emit(name: str, payload: bytes | str) -> None:
+        nonlocal written
         path = FIXTURES / name
-        content = builder()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        blob = payload if isinstance(payload, bytes) else payload.encode("utf-8")
         if args.check:
-            if not path.exists() or path.read_text(encoding="utf-8") != content:
+            if not path.exists() or path.read_bytes() != blob:
                 drift.append(name)
         else:
-            path.write_text(content, encoding="utf-8")
-            print(f"wrote {path.relative_to(ROOT)}")
+            path.write_bytes(blob)
+            written += 1
+            print(f"wrote {path.relative_to(ROOT)} ({len(blob)} bytes)")
+
+    for name, builder in FILES.items():
+        payload = builder()
+        if isinstance(payload, dict):
+            for sub, blob in payload.items():
+                emit(sub, blob)
+        else:
+            emit(name, payload)
+
     if args.check:
         if drift:
             print(f"FIXTURE DRIFT: {', '.join(drift)}", file=sys.stderr)
             return 1
-        print("fixtures reproducible: 3/3")
+        print(f"fixtures reproducible: {len(FILES)} builders, no drift")
     return 0
 
 

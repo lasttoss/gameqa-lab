@@ -22,6 +22,8 @@ jobs:
         run: make fixtures-check
       - name: Gate passes on the recorded fixtures
         run: make demo
+      - name: Audio bank gate
+        run: make audio
       - name: Gate closes when limits tighten
         run: make guard
       - name: Airflow scripts compile without airtest installed

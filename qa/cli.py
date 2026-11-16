@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from qa import gate, htmlreport, report
+from qa.audio import inventory
 from qa.gfxinfo import parse_framestats, parse_summary
 from qa.rtp import confidence_interval, measure, read_rounds
 
@@ -52,14 +53,39 @@ def _collect() -> tuple[list[gate.Check], str]:
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
-    checks = gate.check_frames(frames, cfg) + gate.check_summary(summary, cfg) + gate.check_simulation(stats, cfg)
+    clips = inventory(FIXTURES / "audio")
+    checks = (
+        gate.check_frames(frames, cfg)
+        + gate.check_summary(summary, cfg)
+        + gate.check_simulation(stats, cfg)
+        + gate.check_audio(clips, cfg)
+    )
     detail = (
         f"frames={frames.count} p50={frames.percentile(50):.2f}ms "
         f"p90={frames.percentile(90):.2f}ms p99={frames.percentile(99):.2f}ms | "
         f"rounds={stats.rounds} rtp={stats.rtp:.4f} hit={stats.hit_frequency:.4f} "
-        f"volatility={stats.volatility:.3f}"
+        f"volatility={stats.volatility:.3f} | audio={len(clips)} clips "
+        f"{', '.join(f'{c.path.stem}:{c.duration_ms:.0f}ms/{c.rms_db:.1f}dB' for c in clips if c.decodable)}"
     )
     return checks, detail
+
+
+def _audio(args: list[str]) -> int:
+    if not args:
+        print("usage: python -m qa audio <dir with wav files>", file=sys.stderr)
+        return 2
+    directory = Path(args[0])
+    cfg = gate.load_config(ROOT / "config.json")
+    clips = inventory(directory)
+    checks = gate.check_audio(clips, cfg)
+    print(report.render(checks, f"audio: {directory}"))
+    for clip in clips:
+        if clip.decodable:
+            print(f"  {clip.path.name:24} {clip.duration_ms:8.1f} ms  {clip.sample_rate} Hz  "
+                  f"{clip.channels}ch  rms {clip.rms_db:6.1f} dB  peak {clip.peak:.3f}")
+        else:
+            print(f"  {clip.path.name:24} inventoried only (not WAV)")
+    return report.exit_code(checks)
 
 
 def _html(args: list[str]) -> int:
@@ -91,18 +117,24 @@ def _demo(_: list[str]) -> int:
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
-    checks = gate.check_frames(frames, cfg) + gate.check_summary(summary, cfg) + gate.check_simulation(stats, cfg)
+    clips = inventory(FIXTURES / "audio")
+    checks = (
+        gate.check_frames(frames, cfg)
+        + gate.check_summary(summary, cfg)
+        + gate.check_simulation(stats, cfg)
+        + gate.check_audio(clips, cfg)
+    )
     print(report.render(checks, "demo: recorded fixtures (not measured on a device)"))
     return report.exit_code(checks)
 
 
-COMMANDS = {"perf": _perf, "sim": _sim, "demo": _demo, "html": _html}
+COMMANDS = {"perf": _perf, "sim": _sim, "demo": _demo, "html": _html, "audio": _audio}
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in {"-h", "--help"}:
-        print("usage: python -m qa {demo|perf <file>|sim <csv>|html [out.html]}")
+        print("usage: python -m qa {demo|perf <file>|sim <csv>|audio <dir>|html [out.html]}")
         return 0
     command, rest = argv[0], argv[1:]
     handler = COMMANDS.get(command)

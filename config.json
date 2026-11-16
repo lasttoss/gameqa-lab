@@ -8,8 +8,13 @@
   "simulation": {
     "rtp_min": 0.945,
     "rtp_max": 0.965,
-    "hit_frequency_min": 0.20,
+    "hit_frequency_min": 0.2,
     "hit_frequency_max": 0.35,
     "max_win_multiplier": 5000.0
+  },
+  "audio": {
+    "min_files": 3,
+    "min_rms_db": -40.0,
+    "min_duration_ms": 30.0
   }
 }

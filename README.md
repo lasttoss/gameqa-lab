@@ -7,6 +7,7 @@ so that the numbers are reproducible and the gate can actually close.
 |---|---|---|
 | frame time | per-frame duration from `dumpsys gfxinfo … framestats`, not a histogram guess | yes (recorded fixtures) |
 | slot maths | RTP, hit frequency, volatility and a 95% interval from one row per round | yes (designed fixture) |
+| audio bank | WAV decoded with the standard library: silence, clipping, length | yes (generated clips) |
 | device flow | Airtest taps, `device().shell()` measures, both in the same run | no — needs a device |
 
 ## Verify in 60 seconds
@@ -36,8 +37,10 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
 * the frame times are **synthetic** (240 frames, ~9 ms typical, a long frame every
   37th frame), which proves the percentile and jank arithmetic, not the smoothness
   of a build;
-* nothing here has been run against a production slot game, and there is no audio
-  check yet. `flows/slot_smoke.py` returns exit **3** when no device is attached,
+* the audio clips are three generated sine tones, so the gate proves the decoder and
+  the thresholds work — it says nothing about how a build sounds. Compressed formats
+  (.ogg/.mp3) are counted, never judged: no decoder, no claim;
+* nothing here has been run against a production slot game. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 
 ## The artefacts a reviewer actually opens
@@ -69,6 +72,8 @@ python -m qa demo                              # all gates on the fixtures
 python -m qa perf out/gfxinfo_framestats.txt   # per-frame gate
 python -m qa perf out/gfxinfo_summary.txt --summary
 python -m qa sim  out/simulation.csv           # slot maths gate
+python -m qa audio out/audio-assets            # sound bank gate (WAV decoded)
+./scripts/collect_audio.sh com.example.slot    # pull the bank over adb, then judge it
 ./scripts/collect.sh com.example.slot          # pull both artefacts from a device
 python flows/slot_smoke.py --package com.example.slot   # Airtest flow + measurement + report
 ./scripts/make_video.sh out/shot_*.jpg out/walkthrough.mp4   # video without a device recorder
@@ -88,10 +93,11 @@ gate without a code review:
 ```
 qa/gfxinfo.py   parsers for the summary block and for framestats CSV
 qa/rtp.py       per-round rollup: RTP, hit frequency, volatility, 95% interval
+qa/audio.py     WAV header + samples: duration, sample rate, RMS, peak, clipping
 qa/gate.py      measurements -> checks, limits read from config.json
 qa/report.py    one aligned block of text + exit code
 flows/          Airtest flow; measures inside the same run via device().shell()
-scripts/        collect the two artefacts from a device
+scripts/        collect artefacts from a device: framestats, audio bank, run video
 tools/          fixture generator (deterministic) and the guard that proves the gate
 tests/          15 unit tests over the fixtures
 ```

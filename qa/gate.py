@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qa.gfxinfo import FrameStats, SummaryStats
+from qa.audio import Clip
 from qa.rtp import SimulationStats
 
 
@@ -75,3 +76,47 @@ def check_simulation(stats: SimulationStats, cfg: dict) -> list[Check]:
               f"{stats.rounds} rounds"),
     ]
     return checks
+
+
+def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
+    """Three things a sound bank can get wrong without anyone noticing."""
+    limits = cfg.get("audio", {})
+    min_files = int(limits.get("min_files", 1))
+    min_rms = float(limits.get("min_rms_db", -40.0))
+    min_ms = float(limits.get("min_duration_ms", 30.0))
+
+    wavs = [c for c in clips if c.path.suffix.lower() == ".wav"]
+    silent = [c.path.name for c in wavs if c.rms_db is None or c.rms_db < min_rms]
+    clipped = [c.path.name for c in wavs if c.clipping]
+    too_short = [c.path.name for c in wavs if (c.duration_ms or 0) < min_ms]
+
+    return [
+        Check(
+            name="audio_files",
+            value=float(len(clips)),
+            limit=float(min_files),
+            passed=len(clips) >= min_files,
+            detail=f"{len(wavs)} wav decoded, {len(clips) - len(wavs)} inventoried only",
+        ),
+        Check(
+            name="audio_silent_clips",
+            value=float(len(silent)),
+            limit=0.0,
+            passed=not silent,
+            detail=f"rms below {min_rms:.0f} dB: {', '.join(silent) or 'none'}",
+        ),
+        Check(
+            name="audio_clipped_clips",
+            value=float(len(clipped)),
+            limit=0.0,
+            passed=not clipped,
+            detail=f"peak at full scale: {', '.join(clipped) or 'none'}",
+        ),
+        Check(
+            name="audio_too_short",
+            value=float(len(too_short)),
+            limit=0.0,
+            passed=not too_short,
+            detail=f"under {min_ms:.0f} ms: {', '.join(too_short) or 'none'}",
+        ),
+    ]
