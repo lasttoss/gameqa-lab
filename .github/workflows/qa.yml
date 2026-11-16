@@ -24,6 +24,18 @@ jobs:
         run: make demo
       - name: Gate closes when limits tighten
         run: make guard
+      - name: HTML report
+        run: make report
+      - name: Report is a single self-contained file
+        run: |
+          test -s out/report.html
+          ! grep -qE 'https?://|cdn\.' out/report.html
+          grep -q "GATE PASSED" out/report.html
+          echo "report: $(wc -c < out/report.html) bytes, no external references"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-report-py${{ matrix.python-version }}
+          path: out/report.html
       - name: No device means SKIP, not PASS
         run: |
           set +e

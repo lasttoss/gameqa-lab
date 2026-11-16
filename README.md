@@ -40,6 +40,17 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
   check yet. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 
+## The two artefacts a reviewer actually opens
+
+`python -m qa html out/report.html` writes **one self-contained file** — inline CSS,
+no fonts, no CDN, no script. It opens on a laptop with no network. Each row shows the
+measured value, its limit from `config.json`, and a bar with the limit marked.
+
+`flows/slot_smoke.py` records the run to `out/run.mp4` with Airtest and passes the file
+to the same report, so the frames inside the video window are the frames measured above.
+Recording needs an ffmpeg binary; `scripts/make_video.sh` falls back to
+`imageio-ffmpeg` when the system one is missing.
+
 ## Commands
 
 ```bash
@@ -48,7 +59,8 @@ python -m qa perf out/gfxinfo_framestats.txt   # per-frame gate
 python -m qa perf out/gfxinfo_summary.txt --summary
 python -m qa sim  out/simulation.csv           # slot maths gate
 ./scripts/collect.sh com.example.slot          # pull both artefacts from a device
-python flows/slot_smoke.py --package com.example.slot   # Airtest flow + measurement
+python flows/slot_smoke.py --package com.example.slot   # Airtest flow + measurement + report
+./scripts/make_video.sh out/shot_*.jpg out/walkthrough.mp4   # video without a device recorder
 ```
 
 Thresholds live in `config.json`, not in Python, so a QA lead can move a release

@@ -45,6 +45,7 @@ def main() -> int:
     parser.add_argument("--serial", default=None)
     parser.add_argument("--out", default="out/framestats.txt")
     parser.add_argument("--skip-ui", action="store_true", help="measure only; no Airtest import")
+    parser.add_argument("--no-record", action="store_true", help="do not record the run to mp4")
     args = parser.parse_args()
 
     out = ROOT / args.out
@@ -59,16 +60,30 @@ def main() -> int:
 
     if not args.skip_ui:
         try:
-            from airtest.core.api import device, sleep, touch  # noqa: F401
-            from airtest.core.api import snapshot  # noqa: F401
+            from airtest.core.api import (  # noqa: F401
+                device, sleep, snapshot, start_recording, stop_recording, touch,
+            )
             from poco.drivers.unity3d import UnityPoco  # noqa: F401
         except ImportError:
             print("airtest/poco missing: pip install -r requirements-device.txt", file=sys.stderr)
             return 2
         print("[2/4] Airtest flow: open the game, spin, wait for the result screen")
-        # Replace these three calls with the real selectors for the build under test.
+        video = out.parent / "run.mp4"
+        if not args.no_record:
+            start_recording(output=str(video), max_time=300)
+        # Replace these calls with the real selectors for the build under test.
         # touch(Template(str(ROOT / "assets" / "icon_game.png")))
         time.sleep(1.0)
+        shot = out.parent / "shot_result.jpg"
+        try:
+            snapshot(filename=str(shot))
+        except Exception:                                 # noqa: BLE001 - snapshot is best effort
+            shot = None
+        if not args.no_record:
+            try:
+                stop_recording()
+            except Exception:                             # noqa: BLE001
+                pass
     else:
         print("[2/4] UI step skipped")
 
@@ -79,8 +94,18 @@ def main() -> int:
         print(f"SKIP: {exc}", file=sys.stderr)
         return 3
 
-    print("[4/4] evaluate the perf gate")
-    return subprocess.run([sys.executable, "-m", "qa", "perf", str(out)], cwd=ROOT).returncode
+    print("[4/4] evaluate the perf gate and write the HTML report")
+    code = subprocess.run([sys.executable, "-m", "qa", "perf", str(out)], cwd=ROOT).returncode
+    report_args = [sys.executable, "-m", "qa", "html", str(out.parent / "report.html")]
+    video_path = out.parent / "run.mp4"
+    if video_path.exists():
+        report_args.append(f"--video={video_path}")
+    shots = [p for p in (out.parent / "shot_result.jpg",) if p.exists()]
+    if shots:
+        report_args.append("--shots=" + ",".join(str(p) for p in shots))
+    subprocess.run(report_args, cwd=ROOT)
+    print(f"report: {(out.parent / 'report.html').relative_to(ROOT)}")
+    return code
 
 
 if __name__ == "__main__":
