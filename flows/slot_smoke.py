@@ -28,7 +28,10 @@ def gfxinfo(serial: str | None, package: str, framestats: bool) -> str:
     command += ["shell", "dumpsys", "gfxinfo", package]
     if framestats:
         command.append("framestats")
-    result = subprocess.run(command, capture_output=True, text=True)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise RuntimeError("adb not installed or not on PATH") from exc
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip().splitlines()
         message = detail[-1] if detail else "adb failed"
