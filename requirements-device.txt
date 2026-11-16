@@ -1,0 +1,3 @@
+# Only needed for flows/ that drive a real device. The unit suite does not use these.
+airtest>=1.3,<1.5
+pocoui>=1.0.90

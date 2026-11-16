@@ -1,0 +1,36 @@
+name: qa
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit suite
+        run: make test
+      - name: Fixtures are reproducible
+        run: make fixtures-check
+      - name: Gate passes on the recorded fixtures
+        run: make demo
+      - name: Gate closes when limits tighten
+        run: make guard
+      - name: No device means SKIP, not PASS
+        run: |
+          set +e
+          python flows/slot_smoke.py --skip-ui --package com.example.slot
+          code=$?
+          set -e
+          if [ "$code" -ne 3 ]; then
+            echo "expected exit 3 (no device) but got $code"; exit 1
+          fi
+          echo "device flow skipped with exit 3 as expected"

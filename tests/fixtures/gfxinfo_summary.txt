@@ -1,0 +1,20 @@
+Applications Graphics Acceleration Info:
+Uptime: 240000 Realtime: 240000
+
+** Graphics info for pid 4242 [com.example.slot] **
+
+Stats since: 88765432109ns
+Total frames rendered: 1245
+Janky frames: 52 (4.18%)
+Janky frames (legacy): 52 (4.18%)
+50th percentile: 5ms
+90th percentile: 15ms
+95th percentile: 19ms
+99th percentile: 32ms
+Number Missed Vsync: 9
+Number High input latency: 0
+Number Slow UI thread: 12
+Number Slow bitmap uploads: 1
+Number Slow issue draw commands: 3
+Number Frame deadline missed: 52
+HISTOGRAM: 5ms=612 6ms=210 7ms=118 8ms=74 9ms=44 10ms=31 11ms=22 12ms=16 13ms=12 14ms=9 15ms=7 16ms=5 17ms=4 20ms=3 25ms=2 30ms=2 40ms=1 50ms=1 100ms=0
