@@ -14,6 +14,11 @@ so that the numbers are reproducible and the gate can actually close.
 
 ![The gate pipeline: three measurement sources feed three parsers, which feed one gate whose limits live in config.json; the gate emits a self-contained report, an Airtest log with its recording, and an exit code CI reads.](docs/figures/gate-pipeline.png)
 
+**Example of a real run, not a fixture:** [`docs/evidence/emulator-2026-11-16/`](docs/evidence/emulator-2026-11-16/)
+holds one Android run end to end — the device's frame rows, 12 WAV files pulled over adb,
+the Airtest log, the recording, and [`report.html`](docs/evidence/emulator-2026-11-16/report.html)
+rendered from those files. The gate failed there, and the folder's README says why.
+
 ## Verify in 60 seconds
 
 ```bash
@@ -23,6 +28,9 @@ make demo            # 16 checks against the recorded fixtures → gate=armed fa
 make guard           # tightens two limits and asserts the gate turns red
 make fixtures-check  # the fixtures are what the generator produces
 ```
+
+Then open `docs/evidence/emulator-2026-11-16/report.html` in a browser — a real device
+run, one self-contained file, gate failed (98.3% of frames over budget on a software GPU).
 
 `make demo` prints one block and exits 0. `make guard` prints
 `RESULT guard=armed baseline=PASS tightened=FAIL failed_checks=...` and exits 0 only
