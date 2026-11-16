@@ -86,7 +86,8 @@ def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
     min_ms = float(limits.get("min_duration_ms", 30.0))
 
     wavs = [c for c in clips if c.decodable]
-    undecodable = [c.path.name for c in clips if not c.decodable]
+    header_only = [c.path.name for c in clips if not c.decodable and c.duration_ms is not None]
+    unreadable = [c.path.name for c in clips if not c.decodable and c.duration_ms is None]
     silent = [c.path.name for c in wavs if c.rms_db is None or c.rms_db < min_rms]
     clipped = [c for c in wavs if c.clipping]
     clipped_notes = [f"{c.path.name} {100 * (c.full_scale_ratio or 0):.1f}% run={c.longest_run}" for c in clipped]
@@ -98,7 +99,7 @@ def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
             value=float(len(clips)),
             limit=float(min_files),
             passed=len(clips) >= min_files,
-            detail=f"{len(wavs)} decoded, {len(undecodable)} inventoried only",
+            detail=f"{len(wavs)} decoded, {len(header_only)} header-only, {len(unreadable)} unreadable",
         ),
         Check(
             name="audio_silent_clips",
@@ -115,11 +116,11 @@ def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
             detail=f"3+ samples at the rail: {', '.join(clipped_notes) or 'none'}",
         ),
         Check(
-            name="audio_undecodable",
-            value=float(len(undecodable)),
+            name="audio_unreadable",
+            value=float(len(unreadable)),
             limit=0.0,
-            passed=not undecodable,
-            detail=f"not judged, no decoder claimed: {', '.join(undecodable) or 'none'}",
+            passed=not unreadable,
+            detail=f"no header, nothing claimed: {', '.join(unreadable) or 'none'}",
         ),
         Check(
             name="audio_too_short",

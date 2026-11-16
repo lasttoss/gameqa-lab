@@ -11,14 +11,32 @@ from qa.rtp import confidence_interval, measure, read_rounds
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
+DEFAULT_CONFIG = ROOT / "config.json"
+
+
+def _split_config(args: list[str]) -> tuple[list[str], Path]:
+    """Every subcommand accepts --config <path>, so a release gate can be tried
+    without editing the committed one."""
+    rest: list[str] = []
+    config = DEFAULT_CONFIG
+    index = 0
+    while index < len(args):
+        if args[index] == "--config" and index + 1 < len(args):
+            config = Path(args[index + 1])
+            index += 2
+            continue
+        rest.append(args[index])
+        index += 1
+    return rest, config
 
 
 def _perf(args: list[str]) -> int:
+    args, config = _split_config(args)
     if not args:
         print("usage: python -m qa perf <gfxinfo.txt> [--summary]", file=sys.stderr)
         return 2
     path = Path(args[0])
-    cfg = gate.load_config(ROOT / "config.json")
+    cfg = gate.load_config(config)
     text = path.read_text(encoding="utf-8")
     if "--summary" in args:
         checks = gate.check_summary(parse_summary(text), cfg)
@@ -31,11 +49,12 @@ def _perf(args: list[str]) -> int:
 
 
 def _sim(args: list[str]) -> int:
+    args, config = _split_config(args)
     if not args:
         print("usage: python -m qa sim <simulation.csv>", file=sys.stderr)
         return 2
     path = Path(args[0])
-    cfg = gate.load_config(ROOT / "config.json")
+    cfg = gate.load_config(config)
     stats = measure(read_rounds(path))
     low, high = confidence_interval(stats)
     checks = gate.check_simulation(stats, cfg)
@@ -48,8 +67,8 @@ def _sim(args: list[str]) -> int:
     return report.exit_code(checks)
 
 
-def _collect() -> tuple[list[gate.Check], str]:
-    cfg = gate.load_config(ROOT / "config.json")
+def _collect(config: Path = DEFAULT_CONFIG) -> tuple[list[gate.Check], str]:
+    cfg = gate.load_config(config)
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
@@ -71,11 +90,12 @@ def _collect() -> tuple[list[gate.Check], str]:
 
 
 def _audio(args: list[str]) -> int:
+    args, config = _split_config(args)
     if not args:
         print("usage: python -m qa audio <dir with wav files>", file=sys.stderr)
         return 2
     directory = Path(args[0])
-    cfg = gate.load_config(ROOT / "config.json")
+    cfg = gate.load_config(config)
     clips = inventory(directory)
     checks = gate.check_audio(clips, cfg)
     print(report.render(checks, f"audio: {directory}"))
@@ -85,11 +105,16 @@ def _audio(args: list[str]) -> int:
                   f"{clip.channels}ch  {clip.encoding:8} rms {clip.rms_db:6.1f} dB  peak {clip.peak:.4f}  "
                   f"rail {100 * (clip.full_scale_ratio or 0):.2f}% run={clip.longest_run}")
         else:
-            print(f"  {clip.path.name:24} inventoried only (not WAV)")
+            if clip.duration_ms is None:
+                print(f"  {clip.path.name:24} unreadable header")
+            else:
+                print(f"  {clip.path.name:24} {clip.duration_ms:8.1f} ms  {clip.sample_rate} Hz  "
+                      f"{clip.channels}ch  {clip.encoding}  header only, not judged")
     return report.exit_code(checks)
 
 
 def _html(args: list[str]) -> int:
+    args, config = _split_config(args)
     out = Path(args[0]) if args else ROOT / "out" / "report.html"
     video = None
     shots: list[Path] = []
@@ -98,7 +123,7 @@ def _html(args: list[str]) -> int:
             video = Path(arg.split("=", 1)[1])
         elif arg.startswith("--shots="):
             shots = [Path(p) for p in arg.split("=", 1)[1].split(",") if p]
-    checks, detail = _collect()
+    checks, detail = _collect(config)
     meta = htmlreport.RunMeta(
         title="Slot build gate",
         source="recorded fixtures (tests/fixtures) — not a device capture",
@@ -107,14 +132,16 @@ def _html(args: list[str]) -> int:
         shots=tuple(shots),
     )
     extras = f'<h2>Measured</h2><p class="muted">{detail}</p>'
+    extras += f'<h2>Thresholds</h2><p class="muted">{config}</p>'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(htmlreport.render(checks, meta, ROOT, extras), encoding="utf-8")
     print(f"wrote {out} ({out.stat().st_size} bytes, {len(checks)} checks)")
     return report.exit_code(checks)
 
 
-def _demo(_: list[str]) -> int:
-    cfg = gate.load_config(ROOT / "config.json")
+def _demo(args: list[str]) -> int:
+    _, config = _split_config(args)
+    cfg = gate.load_config(config)
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
@@ -135,7 +162,7 @@ COMMANDS = {"perf": _perf, "sim": _sim, "demo": _demo, "html": _html, "audio": _
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in {"-h", "--help"}:
-        print("usage: python -m qa {demo|perf <file>|sim <csv>|audio <dir>|html [out.html]}")
+        print("usage: python -m qa {demo|perf <file>|sim <csv>|audio <dir>|html [out.html]} [--config path]")
         return 0
     command, rest = argv[0], argv[1:]
     handler = COMMANDS.get(command)

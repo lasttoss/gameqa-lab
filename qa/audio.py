@@ -118,6 +118,70 @@ def _samples(data: bytes, audio_format: int, bits: int) -> tuple[list[float], st
     return None
 
 
+
+MP3_BITRATE_TABLE = (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)
+MP3_RATES = {0: 44100, 1: 48000, 2: 32000}
+
+
+def _ogg_info(blob: bytes) -> tuple[float | None, int | None, int | None, str] | None:
+    """Duration from the granule position of the last page. Reads headers only.
+
+    Compressed assets are most of a real bank, and `wave` cannot touch them. Refusing
+    to report anything about them leaves the reviewer blind; reporting a duration from
+    the container is honest as long as it is not called a waveform measurement.
+    """
+    if not blob.startswith(b"OggS"):
+        return None
+    offset = 0
+    rate = channels = None
+    last_granule = None
+    while offset + 27 <= len(blob) and blob[offset:offset + 4] == b"OggS":
+        (granule,) = struct.unpack_from("<q", blob, offset + 6)
+        segments = blob[offset + 26]
+        table = blob[offset + 27:offset + 27 + segments]
+        body_start = offset + 27 + segments
+        body_len = sum(table)
+        body = blob[body_start:body_start + body_len]
+        if body[:7] == b"\x01vorbis" and len(body) >= 16:
+            channels = body[11]
+            (rate,) = struct.unpack_from("<I", body, 12)
+        if granule >= 0:
+            last_granule = granule
+        offset = body_start + body_len
+    if rate is None:
+        return (None, None, None, "ogg/unknown-codec")
+    duration = 1000.0 * last_granule / rate if last_granule else None
+    return (duration, rate, channels, "ogg/vorbis")
+
+
+def _mp3_info(blob: bytes) -> tuple[float | None, int | None, int | None, str] | None:
+    """Duration estimated from the bitrate — labelled as an estimate, not a measurement."""
+    start = 0
+    if blob.startswith(b"ID3") and len(blob) >= 10:
+        size = (blob[6] << 21) | (blob[7] << 14) | (blob[8] << 7) | blob[9]
+        start = 10 + size
+    index = start
+    limit = min(len(blob) - 4, start + 65536)
+    while index < limit:
+        if blob[index] == 0xFF and (blob[index + 1] & 0xE0) == 0xE0:
+            break
+        index += 1
+    else:
+        return None
+    header = struct.unpack_from(">I", blob, index)[0]
+    version = (header >> 19) & 0x03
+    layer = (header >> 17) & 0x03
+    bitrate_index = (header >> 12) & 0x0F
+    rate_index = (header >> 10) & 0x03
+    if version != 3 or layer != 1 or not 0 < bitrate_index < len(MP3_BITRATE_TABLE) or rate_index == 3:
+        return None
+    bitrate = MP3_BITRATE_TABLE[bitrate_index] * 1000
+    rate = MP3_RATES[rate_index]
+    channels = 1 if ((header >> 6) & 0x03) == 3 else 2
+    duration = 1000.0 * (len(blob) - index) * 8 / bitrate
+    return (duration, rate, channels, "mp3/estimated")
+
+
 def inspect(path: Path) -> Clip:
     """Decode a WAV and measure it. Anything else is inventoried, not judged."""
     try:
@@ -127,12 +191,18 @@ def inspect(path: Path) -> Clip:
 
     chunks = _read_chunks(blob)
     if chunks is None:
-        return Clip(path, None, None, None, None, None, decodable=False)
+        suffix = path.suffix.lower()
+        header = _ogg_info(blob) if suffix == ".ogg" else _mp3_info(blob) if suffix == ".mp3" else None
+        if header is None:
+            return Clip(path, None, None, None, None, None, decodable=False, encoding="unreadable")
+        duration, rate, channels, encoding = header
+        return Clip(path, duration, rate, channels, None, None, decodable=False, encoding=encoding)
 
     (audio_format, channels, rate, bits), data = chunks
     decoded = _samples(data, audio_format, bits)
     if decoded is None:
-        return Clip(path, 0.0, rate, channels, None, None, decodable=False, encoding=f"fmt{audio_format}/{bits}")
+        return Clip(path, 0.0, rate, channels, None, None, decodable=False,
+                    encoding=f"riff/fmt{audio_format}-{bits}bit")
 
     values, encoding, rail = decoded
     if not values:

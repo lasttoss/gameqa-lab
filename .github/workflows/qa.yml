@@ -24,6 +24,22 @@ jobs:
         run: make demo
       - name: Audio bank gate
         run: make audio
+      - name: A stricter config must close the gate
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          cfg = json.loads(pathlib.Path("config.json").read_text())
+          cfg["perf"]["max_jank_pct"] = 0.5
+          pathlib.Path("/tmp/strict.json").write_text(json.dumps(cfg))
+          PY
+          set +e
+          python -m qa demo --config /tmp/strict.json > /dev/null
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "expected exit 1 from the stricter config, got $code"; exit 1
+          fi
+          echo "--config closes the gate as expected"
       - name: Gate closes when limits tighten
         run: make guard
       - name: Airflow scripts compile without airtest installed

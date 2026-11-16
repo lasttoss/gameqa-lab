@@ -80,6 +80,7 @@ class InspectTest(unittest.TestCase):
             clips = inventory(Path(tmp))
             self.assertEqual(len(clips), 1)
             self.assertFalse(clips[0].decodable)
+            self.assertIsNone(clips[0].duration_ms)
 
 
 def write_float_wav(path: Path, values: list[float], rate: int = 48000) -> None:
@@ -118,6 +119,57 @@ class EncodingTest(unittest.TestCase):
             self.assertFalse(inspect(path).decodable)
 
 
+def write_ogg(path: Path, rate: int = 48000, channels: int = 1, granule: int = 96000) -> None:
+    """Two pages: an identification header and a last page with the granule position."""
+    import struct
+
+    id_body = b"\x01vorbis" + struct.pack("<I", 0) + bytes([channels]) + struct.pack("<I", rate) + b"\x00" * 8
+    page1 = (b"OggS" + bytes([0, 0x02]) + struct.pack("<q", 0) + struct.pack("<III", 1, 0, 0)
+             + bytes([1, len(id_body)]) + id_body)
+    page2 = (b"OggS" + bytes([0, 0x04]) + struct.pack("<q", granule) + struct.pack("<III", 1, 1, 0)
+             + bytes([1, 8]) + b"\x00" * 8)
+    path.write_bytes(page1 + page2)
+
+
+def write_mp3(path: Path, kbps_index: int = 9, payload: int = 32000) -> None:
+    """ID3v2 tag then one valid MPEG1 Layer III frame header at 128 kbps."""
+    import struct
+
+    id3 = b"ID3\x03\x00\x00" + bytes([0, 0, 0, 0])
+    header = 0xFFE00000 | (3 << 19) | (1 << 17) | (kbps_index << 12) | (0 << 10)
+    path.write_bytes(id3 + struct.pack(">I", header) + b"\x00" * payload)
+
+
+class CompressedTest(unittest.TestCase):
+    def test_ogg_duration_comes_from_the_granule_position(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tick.ogg"
+            write_ogg(path, rate=48000, granule=96000)
+            clip = inspect(path)
+            self.assertEqual(clip.encoding, "ogg/vorbis")
+            self.assertEqual(clip.sample_rate, 48000)
+            self.assertAlmostEqual(clip.duration_ms, 2000.0, places=0)
+            self.assertFalse(clip.decodable)      # header known, waveform not measured
+            self.assertIsNone(clip.rms_db)
+
+    def test_mp3_duration_is_labelled_an_estimate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "theme.mp3"
+            write_mp3(path, payload=32000)
+            clip = inspect(path)
+            self.assertEqual(clip.encoding, "mp3/estimated")
+            self.assertEqual(clip.sample_rate, 44100)
+            self.assertAlmostEqual(clip.duration_ms, 2000.0, delta=80)
+
+    def test_garbage_with_audio_suffix_is_unreadable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "broken.ogg"
+            path.write_bytes(b"not an ogg stream")
+            clip = inspect(path)
+            self.assertIsNone(clip.duration_ms)
+            self.assertEqual(clip.encoding, "unreadable")
+
+
 class AudioGateTest(unittest.TestCase):
     def setUp(self) -> None:
         self.cfg = gate.load_config(ROOT / "config.json")
@@ -133,6 +185,19 @@ class AudioGateTest(unittest.TestCase):
             checks = gate.check_audio(inventory(Path(tmp)), self.cfg)
             failed = [c.name for c in checks if not c.passed]
             self.assertIn("audio_silent_clips", failed)
+
+    def test_header_only_compressed_file_is_not_unreadable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            write_ogg(Path(tmp) / "ok.ogg")
+            checks = {c.name: c for c in gate.check_audio(inventory(Path(tmp)), self.cfg)}
+            self.assertTrue(checks["audio_unreadable"].passed)
+            self.assertIn("header-only", checks["audio_files"].detail)
+
+    def test_unreadable_file_fails_the_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "bad.ogg").write_bytes(b"junk")
+            checks = {c.name: c for c in gate.check_audio(inventory(Path(tmp)), self.cfg)}
+            self.assertFalse(checks["audio_unreadable"].passed)
 
     def test_raising_the_floor_fails_a_real_clip(self) -> None:
         strict = dict(self.cfg)

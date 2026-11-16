@@ -1,5 +1,7 @@
 # gameqa-lab
 
+![qa](https://github.com/lasttoss/gameqa-lab/actions/workflows/qa.yml/badge.svg)
+
 Three checks a slot build has to survive before someone calls it releasable, written
 so that the numbers are reproducible and the gate can actually close.
 
@@ -14,8 +16,8 @@ so that the numbers are reproducible and the gate can actually close.
 
 ```bash
 git clone https://github.com/lasttoss/gameqa-lab && cd gameqa-lab
-make test            # 15 tests, no device, no network, no API keys
-make demo            # 11 checks against the recorded fixtures → gate=armed failed=0
+make test            # 42 tests, no device, no network, no API keys
+make demo            # 16 checks against the recorded fixtures → gate=armed failed=0
 make guard           # tightens two limits and asserts the gate turns red
 make fixtures-check  # the fixtures are what the generator produces
 ```
@@ -38,8 +40,9 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
   37th frame), which proves the percentile and jank arithmetic, not the smoothness
   of a build;
 * the audio clips are three generated sine tones, so the gate proves the decoder and
-  the thresholds work — it says nothing about how a build sounds. Compressed formats
-  (.ogg/.mp3) are counted, never judged: no decoder, no claim;
+  the thresholds work — it says nothing about how a build sounds. For `.ogg` and `.mp3`
+  the duration comes from the container (Vorbis granule position, MP3 bitrate estimate)
+  and that is all: no waveform, no claim about loudness or clipping;
 * nothing here has been run against a production slot game. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 
@@ -84,7 +87,8 @@ python flows/slot_smoke.py --package com.example.slot   # Airtest flow + measure
 ```
 
 Thresholds live in `config.json`, not in Python, so a QA lead can move a release
-gate without a code review:
+gate without a code review. Any command also takes `--config <path>`, which is how you
+try a stricter gate without touching the committed one:
 
 ```json
 {"perf": {"budget_ms": 16.67, "max_jank_pct": 5.0, "max_p90_ms": 16.0, "max_p99_ms": 34.0},
@@ -103,7 +107,7 @@ qa/report.py    one aligned block of text + exit code
 flows/          Airtest flow; measures inside the same run via device().shell()
 scripts/        collect artefacts from a device: framestats, audio bank, run video
 tools/          fixture generator (deterministic) and the guard that proves the gate
-tests/          15 unit tests over the fixtures
+tests/          42 unit tests over the fixtures and the parsers
 ```
 
 ## Status
