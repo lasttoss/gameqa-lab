@@ -65,6 +65,9 @@ Separately, `python -m qa html out/report.html` renders the **gate** as one file
 value, limit, and a bar per check. That one answers "does this build pass", the
 Airtest log answers "what did the tester see". Two questions, two files.
 
+An APK to dry-run the whole thing without a client build is in
+[docs/EXAMPLE-APK.md](docs/EXAMPLE-APK.md): a real free slot machine, 647 KB, GPL-3.0.
+
 ## Commands
 
 ```bash

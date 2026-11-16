@@ -87,7 +87,8 @@ def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
 
     wavs = [c for c in clips if c.path.suffix.lower() == ".wav"]
     silent = [c.path.name for c in wavs if c.rms_db is None or c.rms_db < min_rms]
-    clipped = [c.path.name for c in wavs if c.clipping]
+    clipped = [c for c in wavs if c.clipping]
+    clipped_notes = [f"{c.path.name} {100 * (c.full_scale_ratio or 0):.1f}% run={c.longest_run}" for c in clipped]
     too_short = [c.path.name for c in wavs if (c.duration_ms or 0) < min_ms]
 
     return [
@@ -110,7 +111,7 @@ def check_audio(clips: list[Clip], cfg: dict) -> list[Check]:
             value=float(len(clipped)),
             limit=0.0,
             passed=not clipped,
-            detail=f"peak at full scale: {', '.join(clipped) or 'none'}",
+            detail=f"3+ samples at the rail: {', '.join(clipped_notes) or 'none'}",
         ),
         Check(
             name="audio_too_short",

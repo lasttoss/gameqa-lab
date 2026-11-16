@@ -26,10 +26,22 @@ class Clip:
     rms_db: float | None
     peak: float | None
     decodable: bool
+    full_scale_ratio: float | None = None     # fraction of samples pinned at the rail
+    longest_run: int = 0                      # longest unbroken rail run
 
     @property
     def clipping(self) -> bool:
-        return self.peak is not None and self.peak >= 0.999
+        """A normalised master is loud, not clipped.
+
+        Peak alone cannot tell them apart: a track normalised to -0.01 dBFS reads
+        peak=0.999 and is clean. Clipping is a *shape*: three or more consecutive
+        samples pinned at the rail. One sample at the rail is quantisation, not a
+        clipped waveform — measured against a real slot APK, where 4 of 7 clips
+        touch the rail but only 3 hold it for a run.
+        """
+        if self.full_scale_ratio is None:
+            return False
+        return self.longest_run >= 3
 
 
 def inspect(path: Path) -> Clip:
@@ -47,16 +59,37 @@ def inspect(path: Path) -> Clip:
     if not frames or width not in (1, 2, 4):
         return Clip(path, 0.0, rate, channels, None, None, decodable=False)
 
-    samples = array.array("h" if width == 2 else "i" if width == 4 else "b")
-    usable = len(raw) - (len(raw) % samples.itemsize)
-    samples.frombytes(raw[:usable])
-    if sys.byteorder == "big":
-        samples.byteswap()
+    # WAV sample encoding depends on the width: 8-bit is UNSIGNED (centred on 128),
+    # 16/32-bit are signed little-endian. Reading 8-bit as signed makes a loud clip
+    # look like noise around zero, which is exactly the mistake this line prevents.
+    if width == 1:
+        raw_samples = array.array("B")
+        raw_samples.frombytes(raw)
+        samples = [value - 128 for value in raw_samples]
+        scale, rail = 128.0, 127
+    else:
+        raw_samples = array.array("h" if width == 2 else "i")
+        usable = len(raw) - (len(raw) % raw_samples.itemsize)
+        raw_samples.frombytes(raw[:usable])
+        if sys.byteorder == "big":
+            raw_samples.byteswap()
+        samples = raw_samples.tolist()
+        scale = float(2 ** (width * 8 - 1))
+        rail = int(scale) - 1
 
-    scale = float(2 ** (width * 8 - 1))
     peak = max(abs(s) for s in samples) / scale
     mean_square = sum((s / scale) ** 2 for s in samples) / len(samples)
     rms_db = 20 * math.log10(math.sqrt(mean_square)) if mean_square > 0 else -math.inf
+
+    at_rail = 0
+    longest = current = 0
+    for sample in samples:
+        if abs(sample) >= rail:
+            at_rail += 1
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
 
     return Clip(
         path=path,
@@ -66,6 +99,8 @@ def inspect(path: Path) -> Clip:
         rms_db=rms_db,
         peak=peak,
         decodable=True,
+        full_scale_ratio=at_rail / len(samples),
+        longest_run=longest,
     )
 
 

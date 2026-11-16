@@ -32,8 +32,32 @@ class InspectTest(unittest.TestCase):
     def test_detects_a_clipped_signal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "clipped.wav"
-            write_wav(path, [32767, -32768] * 500)
-            self.assertTrue(inspect(path).clipping)
+            write_wav(path, [32767, 32767, 32767, -32768] * 250)
+            clip = inspect(path)
+            self.assertTrue(clip.clipping)
+            self.assertGreaterEqual(clip.longest_run, 3)
+
+    def test_one_sample_at_the_rail_is_not_clipping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "touching.wav"
+            write_wav(path, [32767, 100, -200, 300] * 100)
+            self.assertFalse(inspect(path).clipping)
+
+    def test_reads_8bit_unsigned_wav(self) -> None:
+        """WAV stores 8-bit samples unsigned, centred on 128 — not signed bytes."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "eight_bit.wav"
+            payload = bytes([128, 160, 100, 200, 128, 64, 255, 0] * 50)
+            with wave.open(str(path), "wb") as handle:
+                handle.setnchannels(1)
+                handle.setsampwidth(1)
+                handle.setframerate(11025)
+                handle.writeframes(payload)
+            clip = inspect(path)
+            self.assertTrue(clip.decodable)
+            self.assertEqual(clip.sample_rate, 11025)
+            self.assertLess(clip.peak, 1.05)
+            self.assertGreater(clip.rms_db, -30)
 
     def test_detects_silence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
