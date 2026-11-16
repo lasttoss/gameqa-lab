@@ -115,23 +115,57 @@ def _audio(args: list[str]) -> int:
 
 def _html(args: list[str]) -> int:
     args, config = _split_config(args)
-    out = Path(args[0]) if args else ROOT / "out" / "report.html"
+    out = Path(args[0]) if args and not args[0].startswith("--") else ROOT / "out" / "report.html"
     video = None
     shots: list[Path] = []
-    for arg in args[1:]:
+    sources: dict[str, str] = {}
+    device = "not attached"
+    for arg in args:
         if arg.startswith("--video="):
             video = Path(arg.split("=", 1)[1])
         elif arg.startswith("--shots="):
             shots = [Path(p) for p in arg.split("=", 1)[1].split(",") if p]
-    checks, detail = _collect(config)
+        elif arg.startswith("--device="):
+            device = arg.split("=", 1)[1]
+        elif arg.startswith("--") and "=" in arg:
+            key, value = arg[2:].split("=", 1)
+            sources[key] = value
+
+    if sources:
+        cfg = gate.load_config(config)
+        checks: list[gate.Check] = []
+        detail: list[str] = []
+        if "perf" in sources:
+            frames = parse_framestats(Path(sources["perf"]).read_text(encoding="utf-8"))
+            checks += gate.check_frames(frames, cfg)
+            detail.append(f"frames={frames.count} p50={frames.percentile(50):.2f}ms "
+                          f"p90={frames.percentile(90):.2f}ms p99={frames.percentile(99):.2f}ms")
+        if "summary" in sources:
+            summary = parse_summary(Path(sources["summary"]).read_text(encoding="utf-8"))
+            checks += gate.check_summary(summary, cfg)
+            detail.append(f"device summary: {summary.total_frames} frames, {summary.janky_frames} janky")
+        if "sim" in sources:
+            stats = measure(read_rounds(Path(sources["sim"])))
+            checks += gate.check_simulation(stats, cfg)
+            detail.append(f"rounds={stats.rounds} rtp={stats.rtp:.4f}")
+        if "audio" in sources:
+            clips = inventory(Path(sources["audio"]))
+            checks += gate.check_audio(clips, cfg)
+            detail.append(f"audio={len(clips)} files")
+        text = " | ".join(detail)
+        source = "measured on: " + ", ".join(sorted(sources))
+    else:
+        checks, text = _collect(config)
+        source = "recorded fixtures (tests/fixtures) — not a device capture"
+
     meta = htmlreport.RunMeta(
-        title="Slot build gate",
-        source="recorded fixtures (tests/fixtures) — not a device capture",
-        device="not attached",
+        title="Build gate",
+        source=source,
+        device=device,
         video=video,
         shots=tuple(shots),
     )
-    extras = f'<h2>Measured</h2><p class="muted">{detail}</p>'
+    extras = f'<h2>Measured</h2><p class="muted">{text}</p>'
     extras += f'<h2>Thresholds</h2><p class="muted">{config}</p>'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(htmlreport.render(checks, meta, ROOT, extras), encoding="utf-8")

@@ -110,6 +110,14 @@ tools/          fixture generator (deterministic) and the guard that proves the 
 tests/          42 unit tests over the fixtures and the parsers
 ```
 
+## A real run, and what it proves
+
+`docs/EXAMPLE-APK.md` records the first end-to-end run on an Android 13 emulator: 120
+frames parsed from `dumpsys gfxinfo`, 12 audio clips pulled over adb, an Airtest
+`log.html` with 27 steps and a 2.8 MB recording. The gate failed there — 98.3% of
+frames over the 16.67 ms budget — because software rasterisation is not a phone GPU.
+That failure is the pipeline working, not the pipeline breaking.
+
 ## Status
 
 Python 3.11 and 3.12, no third-party dependency for the unit suite. Airtest is

@@ -25,10 +25,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-from airtest.core.api import G, auto_setup, device, log, shell, sleep, snapshot, touch
+from airtest.core.api import (
+    G, auto_setup, device, log, shell, sleep, snapshot, swipe, touch,
+)
 
 PACKAGE = os.environ.get("SLOT_PACKAGE", "com.example.slot")
-OUT = Path(os.environ.get("SLOT_OUT", "out"))
+SWIPES = int(os.environ.get("SMOKE_SWIPES", "0"))
+# Absolute: `airtest run` does not keep the caller's working directory, so a relative
+# path lands inside the log directory instead of the repo.
+OUT = Path(os.environ.get("SLOT_OUT", "out")).resolve()
 ROOT = Path(__file__).resolve().parent.parent
 
 if not G.DEVICE_LIST:                      # allows `python flows/slot_smoke.py` too
@@ -54,6 +59,14 @@ snapshot(filename=str(OUT / "01_launch.jpg"), msg="launch")
 # Replace with the real selector for the build under test:
 # touch(Template(str(ROOT / "assets" / "btn_spin.png")))
 sleep(1.0)
+
+if SWIPES:
+    # A static screen draws almost nothing: gfxinfo reports a handful of frames and the
+    # gate has no distribution to judge. Real interaction is the only way to get one.
+    log("interaction: %d swipes" % SWIPES, desc="action")
+    for _ in range(SWIPES):
+        swipe((0.5, 0.85), (0.5, 0.25))
+        sleep(0.3)
 
 open_stats = read_framestats("base_game")
 

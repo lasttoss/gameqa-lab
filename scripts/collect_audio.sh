@@ -31,6 +31,21 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
 PY
 echo "  $(wc -l < "$out/apk-audio.txt") entries"
 
+echo "[2b/4] extract the wav entries so the gate can decode them"
+python3 - "$out" <<'PY'
+import pathlib, sys, zipfile
+out = pathlib.Path(sys.argv[1])
+target = out / "apk"
+target.mkdir(exist_ok=True)
+count = 0
+with zipfile.ZipFile(out / "base.apk") as apk:
+    for name in apk.namelist():
+        if name.lower().endswith(".wav"):
+            (target / pathlib.Path(name).name).write_bytes(apk.read(name))
+            count += 1
+print(f"  extracted {count} wav files from the apk")
+PY
+
 echo "[3/4] audio files written after install (bundles, obb, cache)"
 adb "${adb_args[@]}" shell \
   "find /sdcard/Android/data/$pkg /sdcard/Android/obb/$pkg -type f 2>/dev/null" \
