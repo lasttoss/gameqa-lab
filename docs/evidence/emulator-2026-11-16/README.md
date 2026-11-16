@@ -33,6 +33,12 @@ PASSING:  audio_files 12 · silent 0 · clipped 0 · unreadable 0 · too short 0
   are an upper bound on a container, and they say nothing about a device in a player's hand.
 - **Not a slot build.** The APK is a plain metronome, chosen to keep the repository free
   of other people's game code. The gate checks the shape of the measurement, not a game's maths.
+- **Not a game engine, and that is the bigger limit.** Two open-source games were tried on the same
+  emulator first: `org.andstatus.game2048` reported **2** frames and `com.agateau.burgerparty`
+  **10**, while both were animating — `dumpsys gfxinfo` only sees the View pipeline, and GL titles
+  (Unity, libGDX, most slot builds) draw outside it. That is why the recorded run is a View-based
+  app: a real game would have produced a near-empty file, and an empty file read as a pass is the
+  exact failure this repository exists to prevent.
 - **Not a full session.** 120 frames and one measured window. A release decision needs
   several scenes, several devices, and a run per build.
 - **`perf-summary-scroll.txt` is a separate capture.** It is a 307-frame summary taken while

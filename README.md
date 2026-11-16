@@ -53,6 +53,13 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
   the thresholds work — it says nothing about how a build sounds. For `.ogg` and `.mp3`
   the duration comes from the container (Vorbis granule position, MP3 bitrate estimate)
   and that is all: no waveform, no claim about loudness or clipping;
+* **the frame source is Android's View renderer, not a game engine.** `dumpsys gfxinfo … framestats`
+  records what the hardware-accelerated View pipeline draws. A Unity, libGDX or other GL title — which
+  is what most slot builds are — draws into a GL surface and reports almost nothing here: measured on
+  this machine, `org.andstatus.game2048` returned **2** frames and `com.agateau.burgerparty` returned
+  **10**, on screens that were visibly animating. For those titles the frame source has to be
+  `dumpsys SurfaceFlinger --latency <layer>`, which this repo does **not** implement yet. A passing
+  frame gate here therefore says nothing about a Unity build.
 * nothing here has been run against a production slot game. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 
