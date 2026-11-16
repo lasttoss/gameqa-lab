@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>gameqa-lab — what the gate measures</title>
+<!-- diagram-meta {"sources":["qa/gfxinfo.py","qa/rtp.py","qa/audio.py","qa/gate.py","qa/report.py","config.json","flows/slot_smoke.py","tools/gen_fixtures.py","scripts/run_flow.sh"],"updated":"2026-11-16"} -->
+<style>
+  :root{
+    --paper:#f5f5f5; --paper-2:#ececec; --ink:#2d3142; --muted:#4f5d75;
+    --soft:#7a8399; --rule:#bfc0c0; --accent:#eb6c36; --link:#2e5aa8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:Inter,"Helvetica Neue",Arial,sans-serif;font-size:13px;line-height:1.42}
+  .sheet{max-width:1300px;margin:0 auto;padding:40px 32px 32px}
+  .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+  h1{font-size:22px;margin:6px 0 4px;letter-spacing:-.01em;font-weight:650}
+  .lede{color:var(--muted);max-width:760px;margin:0 0 26px}
+  svg{display:block;width:100%;height:auto}
+  .legend{display:flex;gap:26px;margin-top:18px;color:var(--muted);font-size:11.5px}
+  .legend span{display:flex;align-items:center;gap:8px}
+  .dash{width:34px;border-top:1.5px dashed var(--muted)}
+  .solid{width:34px;border-top:1.5px solid var(--muted)}
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--rule);
+    color:var(--soft);font-size:11.5px;display:flex;justify-content:space-between;gap:20px}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="eyebrow">gameqa-lab · pipeline</div>
+  <h1>One gate, three measurements, one verdict</h1>
+  <p class="lede">Every number is parsed from a file the device produced. The verdict is an exit
+  code, so the same gate runs on a phone, in CI, and on a laptop with no device at all.</p>
+
+  <svg viewBox="0 0 1240 468" role="img" aria-labelledby="gate-figure-title gate-figure-desc">
+    <title id="gate-figure-title">The gameqa-lab gate pipeline</title>
+    <desc id="gate-figure-desc">Three measurement sources — gfxinfo frame dumps, a rounds CSV, and the sound bank pulled over adb — feed three parsers, which feed one gate whose limits live in config.json. The gate produces three artefacts: a self-contained report.html, an Airtest log.html with its run.mp4, and an exit code that CI reads.</desc>
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/>
+      </marker>
+      <marker id="ar-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#eb6c36"/>
+      </marker>
+    </defs>
+
+    <!-- column labels -->
+    <text x="40" y="18" font-size="10.5" letter-spacing="1.5" fill="#7a8399">MEASURED NOW</text>
+    <text x="368" y="18" font-size="10.5" letter-spacing="1.5" fill="#7a8399">PARSERS</text>
+    <text x="692" y="18" font-size="10.5" letter-spacing="1.5" fill="#7a8399">DECISION</text>
+    <text x="972" y="18" font-size="10.5" letter-spacing="1.5" fill="#7a8399">ARTEFACTS</text>
+
+    <!-- sources -->
+    <g>
+      <rect x="40" y="36" width="268" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="58" y="62" font-size="12.5" font-weight="600" fill="#2d3142">dumpsys gfxinfo</text>
+      <text x="58" y="82" font-size="11.5" fill="#4f5d75">framestats rows + summary block</text>
+      <text x="58" y="100" font-size="11" fill="#7a8399">FRAME_COMPLETED − INTENDED_VSYNC</text>
+      <text x="58" y="122" font-size="10.5" fill="#7a8399">fixture: gfxinfo_framestats.txt</text>
+
+      <rect x="40" y="168" width="268" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="58" y="194" font-size="12.5" font-weight="600" fill="#2d3142">rounds.csv</text>
+      <text x="58" y="214" font-size="11.5" fill="#4f5d75">round_id, bet, win — one row a spin</text>
+      <text x="58" y="232" font-size="11" fill="#7a8399">6000 rounds · 26% hit rate</text>
+      <text x="58" y="254" font-size="10.5" fill="#7a8399">fixture: simulation.csv</text>
+
+      <rect x="40" y="300" width="268" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="58" y="326" font-size="12.5" font-weight="600" fill="#2d3142">sound bank over adb</text>
+      <text x="58" y="346" font-size="11.5" fill="#4f5d75">APK entries + Android/data/&lt;pkg&gt;</text>
+      <text x="58" y="364" font-size="11" fill="#7a8399">PCM8/16/32 · float32 · extensible</text>
+      <text x="58" y="386" font-size="10.5" fill="#7a8399">fixture: tests/fixtures/audio/</text>
+    </g>
+
+    <!-- parsers -->
+    <g>
+      <rect x="368" y="36" width="264" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="386" y="60" font-size="11.5" font-family="ui-monospace,Menlo,monospace" fill="#2d3142">qa/gfxinfo.py</text>
+      <text x="386" y="82" font-size="11.5" fill="#4f5d75">p50 · p90 · p99 · jank %</text>
+      <text x="386" y="102" font-size="11" fill="#7a8399">percentile + budget 16.67 ms</text>
+      <text x="386" y="124" font-size="10.5" fill="#7a8399">raises on a dump with no frames</text>
+
+      <rect x="368" y="168" width="264" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="386" y="192" font-size="11.5" font-family="ui-monospace,Menlo,monospace" fill="#2d3142">qa/rtp.py</text>
+      <text x="386" y="214" font-size="11.5" fill="#4f5d75">RTP · hit frequency · volatility</text>
+      <text x="386" y="234" font-size="11" fill="#7a8399">95% interval on the RTP</text>
+      <text x="386" y="256" font-size="10.5" fill="#7a8399">bad rows counted, not dropped</text>
+
+      <rect x="368" y="300" width="264" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="386" y="324" font-size="11.5" font-family="ui-monospace,Menlo,monospace" fill="#2d3142">qa/audio.py</text>
+      <text x="386" y="346" font-size="11.5" fill="#4f5d75">RMS dB · rail runs · length</text>
+      <text x="386" y="366" font-size="11" fill="#7a8399">ogg/mp3: duration only, no claim</text>
+      <text x="386" y="388" font-size="10.5" fill="#7a8399">3+ samples at the rail = clipped</text>
+    </g>
+
+    <!-- gate (focal) -->
+    <g>
+      <rect x="692" y="104" width="252" height="248" rx="3" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.5"/>
+      <text x="712" y="132" font-size="10.5" letter-spacing="1.2" fill="#eb6c36">THE GATE</text>
+      <text x="712" y="158" font-size="13" font-family="ui-monospace,Menlo,monospace" font-weight="600" fill="#2d3142">qa/gate.py</text>
+      <line x1="712" y1="170" x2="924" y2="170" stroke="#bfc0c0"/>
+      <text x="712" y="192" font-size="11.5" fill="#4f5d75">19 checks, 4 groups</text>
+      <text x="712" y="212" font-size="11.5" fill="#4f5d75">limits read from</text>
+      <text x="712" y="230" font-size="11.5" font-family="ui-monospace,Menlo,monospace" fill="#2d3142">config.json</text>
+      <text x="712" y="258" font-size="11.5" fill="#4f5d75">no threshold in Python,</text>
+      <text x="712" y="276" font-size="11.5" fill="#4f5d75">so a release gate moves</text>
+      <text x="712" y="294" font-size="11.5" fill="#4f5d75">without a code review</text>
+      <text x="712" y="322" font-size="11" fill="#7a8399">--config &lt;path&gt; tries a stricter one</text>
+    </g>
+
+    <!-- artefacts -->
+    <g>
+      <rect x="972" y="36" width="240" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="990" y="62" font-size="12.5" font-weight="600" fill="#2d3142">report.html</text>
+      <text x="990" y="82" font-size="11.5" fill="#4f5d75">value · limit · bar per check</text>
+      <text x="990" y="102" font-size="11" fill="#7a8399">inline CSS, no script, no CDN</text>
+      <text x="990" y="122" font-size="10.5" fill="#7a8399">opens with no network</text>
+
+      <rect x="972" y="168" width="240" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="990" y="194" font-size="12.5" font-weight="600" fill="#2d3142">log.html + run.mp4</text>
+      <text x="990" y="214" font-size="11.5" fill="#4f5d75">written by Airtest itself</text>
+      <text x="990" y="234" font-size="11" fill="#7a8399">one row per action + video</text>
+      <text x="990" y="254" font-size="10.5" fill="#7a8399">what the tester saw</text>
+
+      <rect x="972" y="300" width="240" height="104" rx="3" fill="#ffffff" stroke="#bfc0c0"/>
+      <text x="990" y="326" font-size="12.5" font-weight="600" fill="#2d3142">exit code</text>
+      <text x="990" y="348" font-size="11.5" fill="#4f5d75">0 pass · 1 fail · 3 no device</text>
+      <text x="990" y="368" font-size="11" fill="#7a8399">"cannot measure" never reads</text>
+      <text x="990" y="384" font-size="11" fill="#7a8399">as a pass</text>
+      <text x="990" y="398" font-size="10.5" fill="#7a8399">wired into CI as a step</text>
+    </g>
+
+    <!-- measured-now arrows -->
+    <line x1="308" y1="88" x2="362" y2="88" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="308" y1="220" x2="362" y2="220" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="308" y1="352" x2="362" y2="352" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <path d="M632,88 C664,88 664,196 686,196" fill="none" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="632" y1="220" x2="686" y2="220" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+    <path d="M632,352 C664,352 664,244 686,244" fill="none" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <path d="M944,152 C962,152 956,88 966,88" fill="none" stroke="#eb6c36" stroke-width="1.6" marker-end="url(#ar-accent)"/>
+    <line x1="944" y1="220" x2="966" y2="220" stroke="#eb6c36" stroke-width="1.6" marker-end="url(#ar-accent)"/>
+    <path d="M944,288 C962,288 956,352 966,352" fill="none" stroke="#eb6c36" stroke-width="1.6" marker-end="url(#ar-accent)"/>
+
+    <!-- CI band -->
+    <line x1="40" y1="424" x2="1240" y2="424" stroke="#bfc0c0" stroke-dasharray="4 4"/>
+    <text x="40" y="452" font-size="10.5" letter-spacing="1.5" fill="#7a8399">EVERY PUSH · NO DEVICE</text>
+    <text x="368" y="452" font-size="11.5" fill="#4f5d75">gen_fixtures.py --check</text>
+    <text x="556" y="452" font-size="11.5" fill="#4f5d75">→ make test · make demo</text>
+    <text x="760" y="452" font-size="11.5" fill="#4f5d75">→ make guard: limits tightened must fail</text>
+    <text x="1160" y="452" font-size="11.5" fill="#2d3142">42 tests</text>
+  </svg>
+
+  <div class="legend">
+    <span><i class="solid"></i>measured path — a device or a fixture</span>
+    <span><i class="dash"></i>CI path — same gate, no device</span>
+  </div>
+
+  <footer>
+    <span>Counts reflect commit 6e939b4 · 19 checks across frame time, slot maths, audio and report integrity.</span>
+    <span>Fixture numbers are generated; device numbers are measured.</span>
+  </footer>
+</div>
+</body>
+</html>

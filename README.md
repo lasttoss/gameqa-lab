@@ -12,6 +12,8 @@ so that the numbers are reproducible and the gate can actually close.
 | audio bank | WAV decoded with the standard library (PCM8/16/32, float32, extensible): silence, clipping, length | yes (generated clips) |
 | device flow | Airtest taps, `device().shell()` measures, both in the same run | no — needs a device |
 
+![The gate pipeline: three measurement sources feed three parsers, which feed one gate whose limits live in config.json; the gate emits a self-contained report, an Airtest log with its recording, and an exit code CI reads.](docs/figures/gate-pipeline.png)
+
 ## Verify in 60 seconds
 
 ```bash
