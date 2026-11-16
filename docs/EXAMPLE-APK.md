@@ -1,26 +1,37 @@
-# Example APK for a device-free dry run
+# Example APK: a plain app, no gambling, no client build
 
-A real slot machine, free, open source, no money involved — so the pipeline can be
-exercised end to end on a laptop without touching any client's build.
+The pipeline only needs three things from a test target: a package name, some frames
+to measure, and some audio. A simple open-source app gives all three without touching
+a slot studio's build and without putting anyone else's brand in a job application.
 
 | field | value |
 |---|---|
-| app | Tuty Fruty Slot for Android |
-| package | `eu.veldsoft.tuty.fruty.slot` |
-| author | Velbazhd Software LLC, (c) 2008-2026 |
+| app | Metronome (single screen, tap tempo, no ads) |
+| package | `com.bobek.metronome` |
 | licence | GPL-3.0-only |
-| nature | play-for-fun slot machine, five reels, **no gambling** (ad-supported) |
-| source | https://f-droid.org/en/packages/eu.veldsoft.tuty.fruty.slot/ |
-| apk | https://f-droid.org/repo/eu.veldsoft.tuty.fruty.slot_5.apk (647 KB) |
+| apk | https://f-droid.org/repo/com.bobek.metronome_28.apk (3.1 MB) |
+| page | https://f-droid.org/en/packages/com.bobek.metronome/ |
+| audio | 12 WAV ticks, 48 kHz mono **float32**, 50–100 ms |
 
-## Dry run without a device
+## Licensing, stated plainly
+
+Running, installing and testing a GPL app carries no obligation. The GPL governs
+**distribution and modification**: if you hand someone the APK, you pass on the
+licence with it. This repo never does that — the artefacts it produces are
+`log.html`, an mp4 of your own run, and a text table of measurements. Nothing from
+the app is redistributed, so nothing is inherited.
+
+Using a *client's* build in a public demo is the case that actually needs care, and
+this example exists so that case never has to happen.
+
+## Dry run, no device needed
 
 ```bash
-curl -LO https://f-droid.org/repo/eu.veldsoft.tuty.fruty.slot_5.apk
+curl -LO https://f-droid.org/repo/com.bobek.metronome_28.apk
 python - <<'PY'
 import pathlib, zipfile
 out = pathlib.Path("out/example-audio"); out.mkdir(parents=True, exist_ok=True)
-with zipfile.ZipFile("eu.veldsoft.tuty.fruty.slot_5.apk") as apk:
+with zipfile.ZipFile("com.bobek.metronome_28.apk") as apk:
     for name in apk.namelist():
         if name.lower().endswith(".wav"):
             (out / pathlib.Path(name).name).write_bytes(apk.read(name))
@@ -28,33 +39,35 @@ PY
 python -m qa audio out/example-audio
 ```
 
-With a device or emulator, the same build gives the full path:
+```
+PASS  audio_files          value  12.000  limit  3.000  12 decoded, 0 inventoried only
+PASS  audio_silent_clips   value   0.000  limit  0.000  rms below -40 dB: none
+PASS  audio_clipped_clips  value   0.000  limit  0.000  3+ samples at the rail: none
+PASS  audio_undecodable    value   0.000  limit  0.000  not judged, no decoder claimed: none
+PASS  audio_too_short      value   0.000  limit  0.000  under 30 ms: none
+```
+
+With a device or emulator the same build exercises the rest:
 
 ```bash
-adb install eu.veldsoft.tuty.fruty.slot_5.apk
-./scripts/collect_audio.sh eu.veldsoft.tuty.fruty.slot
-./scripts/run_flow.sh eu.veldsoft.tuty.fruty.slot      # log.html + recording
+adb install com.bobek.metronome_28.apk
+./scripts/collect_audio.sh com.bobek.metronome        # pulls over adb, then judges
+./scripts/run_flow.sh com.bobek.metronome             # log.html + recording
 ```
 
-## What the first run found
+## Three bugs this file found, all invisible on generated fixtures
 
-7 WAV, all 11025 Hz mono 8-bit. `qa/audio.py` flagged 3 of 7 as clipped:
+1. **8-bit WAV is unsigned** (centred on 128). Read as signed bytes, a loud clip looks
+   like noise around zero — the first run reported "peak 1.000, all 7 clipped" for a
+   *slot* APK, which was an artefact of my decoder, not a finding about the game.
+2. **IEEE-float WAV is common** and Python's `wave` module refuses it outright. These
+   twelve ticks are `WAVE_FORMAT_IEEE_FLOAT`, so before the fix every one of them was
+   silently filed as "not a WAV" and skipped the gate.
+3. **The rail has to be compared on one scale.** Comparing a normalised float against
+   the integer rail `32767` flagged 99% of every float clip as pinned at the ceiling.
+   Now the threshold is normalised per encoding: `1.0` for float, `32767/32768` for
+   PCM16, `127/128` for PCM8.
 
-```
-9x.wav   447 ms  rms -10.2 dB  12.5%…  run 13 samples at the rail
-II.wav   154 ms  rms  -5.7 dB  12.5%   run  6
-zZ.wav    79 ms  rms  -6.8 dB   7.8%   run  4
-```
-
-Two corrections came out of running against this file, both worth keeping in mind
-for any real build:
-
-1. **8-bit WAV is unsigned** (centred on 128). Reading it as signed bytes made every
-   clip look like noise around zero and produced a "peak 1.000, all 7 clipped" report
-   that was pure artefact. The decoder now converts per width.
-2. **Peak alone cannot identify clipping.** These clips are normalised near full
-   scale; what separates a loud master from a clipped one is three or more
-   *consecutive* samples pinned at the rail. The check counts runs, not peaks.
-
-Neither bug would have shown up on the generated fixtures — the fixture clips are
-16-bit and clean. That is the argument for exercising the gate on a real file early.
+Every one of those is a case where the gate would have produced a confident, wrong
+number. Fixtures generated by the same person who wrote the decoder cannot catch that;
+a real file from a real build can.

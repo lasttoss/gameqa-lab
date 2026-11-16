@@ -82,6 +82,42 @@ class InspectTest(unittest.TestCase):
             self.assertFalse(clips[0].decodable)
 
 
+def write_float_wav(path: Path, values: list[float], rate: int = 48000) -> None:
+    import struct
+    body = b"".join(struct.pack("<f", v) for v in values)
+    header = b"RIFF" + struct.pack("<I", 36 + len(body)) + b"WAVE"
+    header += b"fmt " + struct.pack("<IHHIIHH", 16, 3, 1, rate, rate * 4, 4, 32)
+    header += b"data" + struct.pack("<I", len(body))
+    path.write_bytes(header + body)
+
+
+class EncodingTest(unittest.TestCase):
+    def test_float32_is_decoded_not_skipped(self) -> None:
+        """Real APKs ship IEEE-float WAV, which Python's wave module rejects."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "float.wav"
+            write_float_wav(path, [0.5] * 4800 + [-0.5] * 4800)
+            clip = inspect(path)
+            self.assertTrue(clip.decodable)
+            self.assertEqual(clip.encoding, "float32")
+            self.assertAlmostEqual(clip.duration_ms, 200.0, places=0)
+            self.assertFalse(clip.clipping)
+
+    def test_float32_rail_is_one_not_thirty_two_thousand(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "hot.wav"
+            write_float_wav(path, [0.8, 1.0, 1.0, 1.0, 0.7] * 100)
+            clip = inspect(path)
+            self.assertTrue(clip.clipping)
+            self.assertGreaterEqual(clip.longest_run, 3)
+
+    def test_unknown_container_is_inventoried(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "weird.wav"
+            path.write_bytes(b"RIFF" + b"\x00" * 64)
+            self.assertFalse(inspect(path).decodable)
+
+
 class AudioGateTest(unittest.TestCase):
     def setUp(self) -> None:
         self.cfg = gate.load_config(ROOT / "config.json")

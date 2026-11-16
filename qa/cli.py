@@ -82,7 +82,7 @@ def _audio(args: list[str]) -> int:
     for clip in clips:
         if clip.decodable:
             print(f"  {clip.path.name:24} {clip.duration_ms:8.1f} ms  {clip.sample_rate} Hz  "
-                  f"{clip.channels}ch  rms {clip.rms_db:6.1f} dB  peak {clip.peak:.4f}  "
+                  f"{clip.channels}ch  {clip.encoding:8} rms {clip.rms_db:6.1f} dB  peak {clip.peak:.4f}  "
                   f"rail {100 * (clip.full_scale_ratio or 0):.2f}% run={clip.longest_run}")
         else:
             print(f"  {clip.path.name:24} inventoried only (not WAV)")

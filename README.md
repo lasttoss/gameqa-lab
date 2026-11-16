@@ -7,7 +7,7 @@ so that the numbers are reproducible and the gate can actually close.
 |---|---|---|
 | frame time | per-frame duration from `dumpsys gfxinfo … framestats`, not a histogram guess | yes (recorded fixtures) |
 | slot maths | RTP, hit frequency, volatility and a 95% interval from one row per round | yes (designed fixture) |
-| audio bank | WAV decoded with the standard library: silence, clipping, length | yes (generated clips) |
+| audio bank | WAV decoded with the standard library (PCM8/16/32, float32, extensible): silence, clipping, length | yes (generated clips) |
 | device flow | Airtest taps, `device().shell()` measures, both in the same run | no — needs a device |
 
 ## Verify in 60 seconds
@@ -66,7 +66,8 @@ value, limit, and a bar per check. That one answers "does this build pass", the
 Airtest log answers "what did the tester see". Two questions, two files.
 
 An APK to dry-run the whole thing without a client build is in
-[docs/EXAMPLE-APK.md](docs/EXAMPLE-APK.md): a real free slot machine, 647 KB, GPL-3.0.
+[docs/EXAMPLE-APK.md](docs/EXAMPLE-APK.md): a plain metronome app, 3.1 MB, GPL-3.0,
+12 float32 WAV ticks — no gambling, no client build, nothing redistributed.
 
 ## Commands
 
