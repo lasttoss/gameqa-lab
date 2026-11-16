@@ -138,9 +138,9 @@ def render(checks: list[Check], meta: RunMeta, root: Path, extras: str = "") -> 
 {shots_block}
 <footer>
 Thresholds come from <code>config.json</code>; the marker on each bar is the limit.
-Nothing here was measured on a production slot build unless the device line says so,
-and audio is not checked yet. A report that cannot fail is decoration —
-<code>make guard</code> proves this one can.
+Nothing here was measured on a production slot build unless the device line says so.
+An audio file whose header cannot be read is a FAIL, never a pass. A report that
+cannot fail is decoration — <code>make guard</code> proves this one can.
 </footer>
 </body></html>
 """

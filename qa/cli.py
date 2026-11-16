@@ -166,7 +166,12 @@ def _html(args: list[str]) -> int:
         shots=tuple(shots),
     )
     extras = f'<h2>Measured</h2><p class="muted">{text}</p>'
-    extras += f'<h2>Thresholds</h2><p class="muted">{config}</p>'
+    shown = config if config is not None else ROOT / "config.json"
+    try:
+        shown = Path(shown).resolve().relative_to(ROOT)
+    except (ValueError, OSError):
+        shown = Path(shown).name
+    extras += f'<h2>Thresholds</h2><p class="muted">{shown}</p>'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(htmlreport.render(checks, meta, ROOT, extras), encoding="utf-8")
     print(f"wrote {out} ({out.stat().st_size} bytes, {len(checks)} checks)")

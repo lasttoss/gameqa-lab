@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build gate — QA report</title>
+<style>
+ :root { --ink:#2d3142; --muted:#5b6478; --rule:#d7d9e0; --paper:#ffffff; --soft:#f5f6f8; }
+ * { box-sizing:border-box; }
+ body { margin:0; padding:32px 28px 48px; background:var(--paper); color:var(--ink);
+        font:14px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+ h1 { font-size:20px; margin:0 0 4px; letter-spacing:-.01em; }
+ h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+       margin:32px 0 10px; border-bottom:1px solid var(--rule); padding-bottom:6px; }
+ .meta { color:var(--muted); font-size:12.5px; }
+ .status { display:inline-block; margin:18px 0 0; padding:8px 14px; border-radius:4px;
+            background:var(--soft); border-left:4px solid #b3261e; font-weight:600;
+            letter-spacing:.02em; font-size:13px; }
+ table { width:100%; border-collapse:collapse; margin-top:6px; font-size:13px; }
+ th { text-align:left; font-weight:600; color:var(--muted); font-size:11.5px;
+       text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--rule); padding:6px 8px; }
+ td { padding:7px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }
+ td.num { font-variant-numeric:tabular-nums; text-align:right; width:88px; }
+ td.name { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
+ td.detail { color:var(--muted); font-size:12px; }
+ .badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:10.5px;
+           font-weight:700; letter-spacing:.06em; }
+ .badge.pass { background:#e6f2ea; color:#1f7a4d; }
+ .badge.fail { background:#fbe9e7; color:#b3261e; }
+ .bar { position:relative; height:8px; background:#eef0f3; border-radius:2px; min-width:120px; }
+ .bar span { position:absolute; left:0; top:0; bottom:0; border-radius:2px; }
+ .bar i { position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--muted); }
+ video { width:100%; max-width:720px; border:1px solid var(--rule); border-radius:4px; }
+ .shots { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+ figure { margin:0; border:1px solid var(--rule); border-radius:4px; overflow:hidden; }
+ figure img { width:100%; display:block; }
+ figcaption { font-size:11.5px; color:var(--muted); padding:6px 8px; background:var(--soft); }
+ .muted { color:var(--muted); font-size:12.5px; }
+ footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--rule);
+           color:var(--muted); font-size:12px; }
+</style></head><body>
+<h1>Build gate</h1>
+<div class="meta">measured on: audio, perf · device: emulator-5554 · Android 13 · 1080x2340 · swiftshader (software GL) ·
+ commit ba3b9b4 · 2026-11-16 21:31 +07</div>
+<div class="status">GATE FAILED (3)</div>
+
+<h2>Checks</h2>
+<table>
+<thead><tr><th>result</th><th>check</th><th>value</th><th>limit</th><th>against limit</th><th>note</th></tr></thead>
+<tbody>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">jank_pct_under_budget</td><td class="num">98.333</td><td class="num">5.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail">120 frames, budget 16.67 ms</td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p90_frame_ms</td><td class="num">69.795</td><td class="num">16.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p99_frame_ms</td><td class="num">83.476</td><td class="num">34.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge pass">PASS</span></td><td class="name">audio_files</td><td class="num">12.000</td><td class="num">3.000</td><td><div class="bar"><span style="width:100.0%;background:#1f7a4d"></span><i style="left:99.4%"></i></div></td><td class="detail">12 decoded, 0 header-only, 0 unreadable</td></tr>
+<tr><td><span class="badge pass">PASS</span></td><td class="name">audio_silent_clips</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">rms below -40 dB: none</td></tr>
+<tr><td><span class="badge pass">PASS</span></td><td class="name">audio_clipped_clips</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">3+ samples at the rail: none</td></tr>
+<tr><td><span class="badge pass">PASS</span></td><td class="name">audio_unreadable</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">no header, nothing claimed: none</td></tr>
+<tr><td><span class="badge pass">PASS</span></td><td class="name">audio_too_short</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">under 30 ms: none</td></tr>
+</tbody></table>
+<h2>Measured</h2><p class="muted">frames=120 p50=50.10ms p90=69.80ms p99=83.48ms | audio=12 files</p><h2>Thresholds</h2><p class="muted">config.json</p>
+
+
+<footer>
+Thresholds come from <code>config.json</code>; the marker on each bar is the limit.
+Nothing here was measured on a production slot build unless the device line says so.
+An audio file whose header cannot be read is a FAIL, never a pass. A report that
+cannot fail is decoration — <code>make guard</code> proves this one can.
+</footer>
+</body></html>

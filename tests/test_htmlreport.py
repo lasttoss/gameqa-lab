@@ -52,7 +52,9 @@ class HtmlReportTest(unittest.TestCase):
 
     def test_footer_states_the_limits_of_the_evidence(self) -> None:
         page = self._render(_checks())
-        self.assertIn("audio is not checked yet", page)
+        self.assertIn("unless the device line says so", page)
+        self.assertIn("whose header cannot be read is a FAIL", page)
+        self.assertIn("make guard", page)
 
 
 if __name__ == "__main__":

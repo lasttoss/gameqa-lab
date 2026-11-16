@@ -114,11 +114,15 @@ tests/          42 unit tests over the fixtures and the parsers
 
 ## A real run, and what it proves
 
-`docs/EXAMPLE-APK.md` records the first end-to-end run on an Android 13 emulator: 120
-frames parsed from `dumpsys gfxinfo`, 12 audio clips pulled over adb, an Airtest
-`log.html` with 27 steps and a 2.8 MB recording. The gate failed there — 98.3% of
-frames over the 16.67 ms budget — because software rasterisation is not a phone GPU.
-That failure is the pipeline working, not the pipeline breaking.
+`docs/evidence/emulator-2026-11-16/` is the record of one end-to-end run on an Android 13
+emulator: the device's `dumpsys gfxinfo` rows, 12 WAV files pulled over adb, the Airtest
+run log, the recording, and the gate report rendered from those files. Open
+`docs/evidence/emulator-2026-11-16/report.html` — it is one self-contained file.
+
+The gate failed there: 120 frames parsed, p50 50.10 ms, p90 69.80 ms, p99 83.48 ms, and
+98.3% of frames over the 16.67 ms budget. Software rasterisation is not a phone GPU, so
+that failure is the pipeline working, not the pipeline breaking. `docs/EXAMPLE-APK.md`
+covers the same run from the tooling side, including what it does not prove.
 
 ## Status
 
