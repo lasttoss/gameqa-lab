@@ -53,8 +53,17 @@ class HtmlReportTest(unittest.TestCase):
     def test_footer_states_the_limits_of_the_evidence(self) -> None:
         page = self._render(_checks())
         self.assertIn("unless the device line says so", page)
-        self.assertIn("whose header cannot be read is a FAIL", page)
         self.assertIn("make guard", page)
+
+    def test_audio_rule_appears_only_when_audio_was_checked(self) -> None:
+        # A compositor-only report must not talk about audio: the reader would take the
+        # sentence as evidence that sound was judged on this run.
+        from qa.audio import inventory
+        cfg = gate.load_config(ROOT / "config.json")
+        without = self._render(_checks())
+        with_audio = self._render(_checks() + gate.check_audio(inventory(FIXTURES / "audio"), cfg))
+        self.assertNotIn("whose header cannot be read is a FAIL", without)
+        self.assertIn("whose header cannot be read is a FAIL", with_audio)
 
 
 if __name__ == "__main__":

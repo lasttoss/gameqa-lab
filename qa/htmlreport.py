@@ -66,6 +66,10 @@ def render(checks: list[Check], meta: RunMeta, root: Path, extras: str = "") -> 
     colour = "#1f7a4d" if failed == 0 else "#b3261e"
     stamp = dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
 
+    audio_rule = (
+        "An audio file whose header cannot be read is a FAIL, never a pass. "
+        if any(c.name.startswith("audio_") for c in checks) else ""
+    )
     video_block = ""
     if meta.video and meta.video.exists():
         video_block = (
@@ -139,8 +143,7 @@ def render(checks: list[Check], meta: RunMeta, root: Path, extras: str = "") -> 
 <footer>
 Thresholds come from <code>config.json</code>; the marker on each bar is the limit.
 Nothing here was measured on a production slot build unless the device line says so.
-An audio file whose header cannot be read is a FAIL, never a pass. A report that
-cannot fail is decoration — <code>make guard</code> proves this one can.
+{audio_rule}A report that cannot fail is decoration — <code>make guard</code> proves this one can.
 </footer>
 </body></html>
 """
