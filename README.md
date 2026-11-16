@@ -40,16 +40,27 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
   check yet. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 
-## The two artefacts a reviewer actually opens
+## The artefacts a reviewer actually opens
 
-`python -m qa html out/report.html` writes **one self-contained file** — inline CSS,
-no fonts, no CDN, no script. It opens on a laptop with no network. Each row shows the
-measured value, its limit from `config.json`, and a bar with the limit marked.
+Airtest writes the run log; this repo does not re-implement it.
 
-`flows/slot_smoke.py` records the run to `out/run.mp4` with Airtest and passes the file
-to the same report, so the frames inside the video window are the frames measured above.
-Recording needs an ffmpeg binary; `scripts/make_video.sh` falls back to
-`imageio-ffmpeg` when the system one is missing.
+```bash
+./scripts/run_flow.sh com.example.slot        # run + recording + report
+```
+
+| file | who writes it | what is in it |
+|---|---|---|
+| `out/airtest-report/log.html` | `airtest report` | one row per action, the screenshot after it, and the gate result |
+| `out/airtest-report/*.mp4` | `airtest run --recording` | the same run, recorded |
+| `out/airtest-report/` (whole dir) | `--export` | self-contained: images and video travel with the html |
+
+`airtest run` only writes `log.txt` + screenshots; `log.html` comes from a second
+command, `airtest report --log_root <dir> --outfile log.html --export <dir>`. Both
+lines are in `scripts/run_flow.sh`, verified against airtest 1.4.3 source.
+
+Separately, `python -m qa html out/report.html` renders the **gate** as one file —
+value, limit, and a bar per check. That one answers "does this build pass", the
+Airtest log answers "what did the tester see". Two questions, two files.
 
 ## Commands
 

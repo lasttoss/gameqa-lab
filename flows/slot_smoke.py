@@ -1,112 +1,71 @@
-"""Airtest flow: UI check plus in-flow frame sampling.
+# -*- coding: utf-8 -*-
+"""Slot build: smoke path plus the frame window that belongs to it.
 
-Runs on a device or an emulator. Airtest is imported lazily so that the unit
-suite and CI never need it installed.
+Run through Airtest so the run produces its own log:
 
-    pip install -r requirements-device.txt
-    python flows/slot_smoke.py --package com.example.slot
+    ./scripts/run_flow.sh com.example.slot          # run + recording + log.html
 
-The point of this file: Airtest owns the taps and the screenshots, and
-`device().shell()` owns the measurement. Both marks land in the same run, so the
-frame window belongs to the scene it names.
+Airtest owns the taps and the screenshots, `device().shell()` owns the
+measurement, and both land in the same log, so a frame window can be traced back
+to the screen it was taken on. Configure with environment variables so the file
+stays a plain Airtest script:
+
+    SLOT_PACKAGE   package name under test      (default com.example.slot)
+    SLOT_OUT       output directory             (default out)
 """
-from __future__ import annotations
+__author__ = "Tran Trung Dung"
+__title__ = "Slot build: smoke + measured frame window"
+__desc__ = (
+    "Launch, spin, result screen. One snapshot per checkpoint and one dumpsys gfxinfo "
+    "read per scene, so the log shows which screen each frame window came from."
+)
 
-import argparse
+import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
+from airtest.core.api import G, auto_setup, device, log, shell, sleep, snapshot, touch
+
+PACKAGE = os.environ.get("SLOT_PACKAGE", "com.example.slot")
+OUT = Path(os.environ.get("SLOT_OUT", "out"))
 ROOT = Path(__file__).resolve().parent.parent
 
+if not G.DEVICE_LIST:                      # allows `python flows/slot_smoke.py` too
+    auto_setup(__file__)
 
-def gfxinfo(serial: str | None, package: str, framestats: bool) -> str:
-    command = ["adb"]
-    if serial:
-        command += ["-s", serial]
-    command += ["shell", "dumpsys", "gfxinfo", package]
-    if framestats:
-        command.append("framestats")
-    try:
-        result = subprocess.run(command, capture_output=True, text=True)
-    except FileNotFoundError as exc:
-        raise RuntimeError("adb not installed or not on PATH") from exc
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip().splitlines()
-        message = detail[-1] if detail else "adb failed"
-        raise RuntimeError(f"no usable device: {message}")
-    return result.stdout
+OUT.mkdir(parents=True, exist_ok=True)
+dev = device()
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--package", default="com.example.slot")
-    parser.add_argument("--serial", default=None)
-    parser.add_argument("--out", default="out/framestats.txt")
-    parser.add_argument("--skip-ui", action="store_true", help="measure only; no Airtest import")
-    parser.add_argument("--no-record", action="store_true", help="do not record the run to mp4")
-    args = parser.parse_args()
-
-    out = ROOT / args.out
-    out.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"[1/4] reset frame stats for {args.package}")
-    try:
-        gfxinfo(args.serial, args.package, framestats=False)
-    except RuntimeError as exc:
-        print(f"SKIP: {exc}", file=sys.stderr)
-        return 3
-
-    if not args.skip_ui:
-        try:
-            from airtest.core.api import (  # noqa: F401
-                device, sleep, snapshot, start_recording, stop_recording, touch,
-            )
-            from poco.drivers.unity3d import UnityPoco  # noqa: F401
-        except ImportError:
-            print("airtest/poco missing: pip install -r requirements-device.txt", file=sys.stderr)
-            return 2
-        print("[2/4] Airtest flow: open the game, spin, wait for the result screen")
-        video = out.parent / "run.mp4"
-        if not args.no_record:
-            start_recording(output=str(video), max_time=300)
-        # Replace these calls with the real selectors for the build under test.
-        # touch(Template(str(ROOT / "assets" / "icon_game.png")))
-        time.sleep(1.0)
-        shot = out.parent / "shot_result.jpg"
-        try:
-            snapshot(filename=str(shot))
-        except Exception:                                 # noqa: BLE001 - snapshot is best effort
-            shot = None
-        if not args.no_record:
-            try:
-                stop_recording()
-            except Exception:                             # noqa: BLE001
-                pass
-    else:
-        print("[2/4] UI step skipped")
-
-    print(f"[3/4] read framestats -> {out.relative_to(ROOT)}")
-    try:
-        out.write_text(gfxinfo(args.serial, args.package, framestats=True), encoding="utf-8")
-    except RuntimeError as exc:
-        print(f"SKIP: {exc}", file=sys.stderr)
-        return 3
-
-    print("[4/4] evaluate the perf gate and write the HTML report")
-    code = subprocess.run([sys.executable, "-m", "qa", "perf", str(out)], cwd=ROOT).returncode
-    report_args = [sys.executable, "-m", "qa", "html", str(out.parent / "report.html")]
-    video_path = out.parent / "run.mp4"
-    if video_path.exists():
-        report_args.append(f"--video={video_path}")
-    shots = [p for p in (out.parent / "shot_result.jpg",) if p.exists()]
-    if shots:
-        report_args.append("--shots=" + ",".join(str(p) for p in shots))
-    subprocess.run(report_args, cwd=ROOT)
-    print(f"report: {(out.parent / 'report.html').relative_to(ROOT)}")
-    return code
+def read_framestats(tag: str) -> Path:
+    """Reset, wait for the scene to settle, read per-frame data, keep it."""
+    shell("dumpsys gfxinfo %s" % PACKAGE)
+    sleep(1.0)
+    raw = dev.shell("dumpsys gfxinfo %s framestats" % PACKAGE)
+    target = OUT / f"framestats_{tag}.txt"
+    target.write_text(raw if isinstance(raw, str) else str(raw), encoding="utf-8")
+    log("framestats: %s" % target.name, desc="measured %s" % tag)
+    return target
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+log("package: %s" % PACKAGE, desc="target")
+snapshot(filename=str(OUT / "01_launch.jpg"), msg="launch")
+# Replace with the real selector for the build under test:
+# touch(Template(str(ROOT / "assets" / "btn_spin.png")))
+sleep(1.0)
+
+open_stats = read_framestats("base_game")
+
+log("spin", desc="action")
+sleep(1.0)
+snapshot(filename=str(OUT / "02_result.jpg"), msg="result screen")
+result_stats = read_framestats("result")
+
+report = subprocess.run(
+    [sys.executable, "-m", "qa", "perf", str(open_stats)],
+    cwd=ROOT, capture_output=True, text=True,
+)
+print(report.stdout or report.stderr)
+log("gate base_game: exit %s" % report.returncode, desc="gate", snapshot=False)
+print("framestats: %s, %s" % (open_stats, result_stats))

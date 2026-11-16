@@ -24,6 +24,13 @@ jobs:
         run: make demo
       - name: Gate closes when limits tighten
         run: make guard
+      - name: Airflow scripts compile without airtest installed
+        run: |
+          python -m py_compile flows/slot_smoke.py
+          bash -n scripts/run_flow.sh
+          bash -n scripts/collect.sh
+          bash -n scripts/make_video.sh
+          echo "flows and scripts parse; the device run itself is not part of CI"
       - name: HTML report
         run: make report
       - name: Report is a single self-contained file
