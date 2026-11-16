@@ -10,6 +10,7 @@ so that the numbers are reproducible and the gate can actually close.
 | frame time | per-frame duration from `dumpsys gfxinfo … framestats`, not a histogram guess | yes (recorded fixtures) |
 | slot maths | RTP, hit frequency, volatility and a 95% interval from one row per round | yes (designed fixture) |
 | audio bank | WAV decoded with the standard library (PCM8/16/32, float32, extensible): silence, clipping, length | yes (generated clips) |
+| frame pacing (GL) | intervals between presents from `dumpsys SurfaceFlinger --latency`, the only source that sees a Unity/libGDX surface | yes (recorded capture) |
 | device flow | Airtest taps, `device().shell()` measures, both in the same run | no — needs a device |
 
 ![The gate pipeline: three measurement sources feed three parsers, which feed one gate whose limits live in config.json; the gate emits a self-contained report, an Airtest log with its recording, and an exit code CI reads.](docs/figures/gate-pipeline.png)
@@ -24,9 +25,10 @@ rendered from those files. The gate failed there, and the folder's README says w
 ```bash
 git clone https://github.com/lasttoss/gameqa-lab && cd gameqa-lab
 make test            # 42 tests, no device, no network, no API keys
-make demo            # 16 checks against the recorded fixtures → gate=armed failed=0
+make demo            # 19 checks against the recorded fixtures → gate=armed failed=0
 make guard           # tightens two limits and asserts the gate turns red
 make fixtures-check  # the fixtures are what the generator produces
+python -m qa sf tests/fixtures/sflinger_latency.txt   # a real GL capture: 127 frames, 59.9 fps
 ```
 
 Then open `docs/evidence/emulator-2026-11-16/report.html` in a browser — a real device
@@ -56,10 +58,12 @@ a phone: `tools/gen_fixtures.py` builds them from a fixed seed. So:
 * **the frame source is Android's View renderer, not a game engine.** `dumpsys gfxinfo … framestats`
   records what the hardware-accelerated View pipeline draws. A Unity, libGDX or other GL title — which
   is what most slot builds are — draws into a GL surface and reports almost nothing here: measured on
-  this machine, `org.andstatus.game2048` returned **2** frames and `com.agateau.burgerparty` returned
-  **10**, on screens that were visibly animating. For those titles the frame source has to be
-  `dumpsys SurfaceFlinger --latency <layer>`, which this repo does **not** implement yet. A passing
-  frame gate here therefore says nothing about a Unity build.
+  this machine, `org.andstatus.game2048` returned **2** frames and `com.agateau.burgerparty`
+  returned **10**, on screens that were visibly animating. Those titles are measured through the
+  compositor instead — `python -m qa sf <dump>` — and
+  [`docs/evidence/emulator-2026-11-16-gl/`](docs/evidence/emulator-2026-11-16-gl/) is a real GL
+  game through that path. What the compositor does **not** tell you is how long the GPU spent:
+  it says when a frame appeared, not what it cost.
 * nothing here has been run against a production slot game. `flows/slot_smoke.py` returns exit **3** when no device is attached,
   because "no device" must never look like "passed".
 

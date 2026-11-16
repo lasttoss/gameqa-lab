@@ -8,6 +8,7 @@ from qa import gate, htmlreport, report
 from qa.audio import inventory
 from qa.gfxinfo import parse_framestats, parse_summary
 from qa.rtp import confidence_interval, measure, read_rounds
+from qa import sflinger
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -67,15 +68,37 @@ def _sim(args: list[str]) -> int:
     return report.exit_code(checks)
 
 
+def _sf(args: list[str]) -> int:
+    args, config = _split_config(args)
+    if not args:
+        print("usage: python -m qa sf <sflinger-latency.txt>", file=sys.stderr)
+        return 2
+    path = Path(args[0])
+    cfg = gate.load_config(config)
+    latency = sflinger.parse_latency(path.read_text(encoding="utf-8"))
+    stats = sflinger.stats(latency)
+    checks = gate.check_sflinger(stats, cfg)
+    print(report.render(checks, f"Frame pacing from the compositor: {path.name}"))
+    print(
+        f"       frames={stats.count} refresh={stats.refresh_ms:.2f}ms fps={stats.fps:.1f} "
+        f"p50={stats.percentile(50):.2f}ms p90={stats.percentile(90):.2f}ms "
+        f"p99={stats.percentile(99):.2f}ms dropped={stats.dropped} ({stats.dropped_pct:.2f}%)"
+    )
+    return report.exit_code(checks)
+
+
 def _collect(config: Path = DEFAULT_CONFIG) -> tuple[list[gate.Check], str]:
     cfg = gate.load_config(config)
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
+    latency = sflinger.parse_latency((FIXTURES / "sflinger_latency.txt").read_text(encoding="utf-8"))
+    sf = sflinger.stats(latency)
     clips = inventory(FIXTURES / "audio")
     checks = (
         gate.check_frames(frames, cfg)
         + gate.check_summary(summary, cfg)
+        + gate.check_sflinger(sf, cfg)
         + gate.check_simulation(stats, cfg)
         + gate.check_audio(clips, cfg)
     )
@@ -83,7 +106,8 @@ def _collect(config: Path = DEFAULT_CONFIG) -> tuple[list[gate.Check], str]:
         f"frames={frames.count} p50={frames.percentile(50):.2f}ms "
         f"p90={frames.percentile(90):.2f}ms p99={frames.percentile(99):.2f}ms | "
         f"rounds={stats.rounds} rtp={stats.rtp:.4f} hit={stats.hit_frequency:.4f} "
-        f"volatility={stats.volatility:.3f} | audio={len(clips)} clips "
+        f"volatility={stats.volatility:.3f} | compositor={sf.count} frames {sf.fps:.1f} fps "
+        f"dropped={sf.dropped} | audio={len(clips)} clips "
         f"{', '.join(f'{c.path.stem}:{c.duration_ms:.0f}ms/{c.rms_db:.1f}dB' for c in clips if c.decodable)}"
     )
     return checks, detail
@@ -140,6 +164,12 @@ def _html(args: list[str]) -> int:
             checks += gate.check_frames(frames, cfg)
             detail.append(f"frames={frames.count} p50={frames.percentile(50):.2f}ms "
                           f"p90={frames.percentile(90):.2f}ms p99={frames.percentile(99):.2f}ms")
+        if "sf" in sources:
+            latency = sflinger.parse_latency(Path(sources["sf"]).read_text(encoding="utf-8"))
+            sf = sflinger.stats(latency)
+            checks += gate.check_sflinger(sf, cfg)
+            detail.append(f"compositor: {sf.count} frames {sf.fps:.1f} fps "
+                          f"p99 {sf.percentile(99):.2f}ms dropped {sf.dropped}")
         if "summary" in sources:
             summary = parse_summary(Path(sources["summary"]).read_text(encoding="utf-8"))
             checks += gate.check_summary(summary, cfg)
@@ -184,10 +214,13 @@ def _demo(args: list[str]) -> int:
     frames = parse_framestats((FIXTURES / "gfxinfo_framestats.txt").read_text(encoding="utf-8"))
     summary = parse_summary((FIXTURES / "gfxinfo_summary.txt").read_text(encoding="utf-8"))
     stats = measure(read_rounds(FIXTURES / "simulation.csv"))
+    latency = sflinger.parse_latency((FIXTURES / "sflinger_latency.txt").read_text(encoding="utf-8"))
+    sf = sflinger.stats(latency)
     clips = inventory(FIXTURES / "audio")
     checks = (
         gate.check_frames(frames, cfg)
         + gate.check_summary(summary, cfg)
+        + gate.check_sflinger(sf, cfg)
         + gate.check_simulation(stats, cfg)
         + gate.check_audio(clips, cfg)
     )
@@ -195,13 +228,13 @@ def _demo(args: list[str]) -> int:
     return report.exit_code(checks)
 
 
-COMMANDS = {"perf": _perf, "sim": _sim, "demo": _demo, "html": _html, "audio": _audio}
+COMMANDS = {"perf": _perf, "sim": _sim, "demo": _demo, "html": _html, "audio": _audio, "sf": _sf}
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in {"-h", "--help"}:
-        print("usage: python -m qa {demo|perf <file>|sim <csv>|audio <dir>|html [out.html]} [--config path]")
+        print("usage: python -m qa {demo|perf <file>|sf <file>|sim <csv>|audio <dir>|html [out.html]} [--config path]")
         return 0
     command, rest = argv[0], argv[1:]
     handler = COMMANDS.get(command)

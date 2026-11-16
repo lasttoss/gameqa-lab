@@ -44,6 +44,21 @@ def check_frames(stats: FrameStats, cfg: dict) -> list[Check]:
     ]
 
 
+def check_sflinger(stats, cfg: dict) -> list[Check]:
+    """Frame pacing from the compositor: the only source that sees a GL game."""
+    sf = cfg["perf"]
+    checks = [
+        Check("sf_frames", stats.count, sf["sf_min_frames"], stats.count >= sf["sf_min_frames"],
+              f"refresh {stats.refresh_ms:.2f} ms, {stats.fps:.1f} fps"),
+        Check("sf_dropped_pct", stats.dropped_pct, sf["sf_max_dropped_pct"],
+              stats.dropped_pct <= sf["sf_max_dropped_pct"],
+              f"{stats.dropped} intervals over 1.5 refresh slots"),
+        Check("sf_p99_interval_ms", stats.percentile(99), sf["sf_max_interval_ms"],
+              stats.percentile(99) <= sf["sf_max_interval_ms"]),
+    ]
+    return checks
+
+
 def check_summary(stats: SummaryStats, cfg: dict) -> list[Check]:
     perf = cfg["perf"]
     checks = [

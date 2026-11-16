@@ -3,7 +3,10 @@
     "budget_ms": 16.67,
     "max_jank_pct": 5.0,
     "max_p90_ms": 16.0,
-    "max_p99_ms": 34.0
+    "max_p99_ms": 34.0,
+    "sf_min_frames": 60,
+    "sf_max_dropped_pct": 5.0,
+    "sf_max_interval_ms": 33.4
   },
   "simulation": {
     "rtp_min": 0.945,
