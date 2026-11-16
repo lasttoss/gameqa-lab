@@ -7,7 +7,7 @@ committed. Nothing here was typed by hand: every file is what the tool wrote.
 
 | Step | Command | Output kept here |
 |---|---|---|
-| Install the APK, launch it, drive two screens, measure | `./scripts/run_flow.sh com.bobek.metronome emulator-5554` | `run-log.txt`, `scene-01-launch.jpg`, `scene-02-result.jpg`, `recording.mp4` |
+| Install the APK, start the beat, drive two screens, measure | `./scripts/run_flow.sh com.bobek.metronome emulator-5554` with `SMOKE_SWIPES=0` | `run-log.txt`, `scene-01-launch.jpg`, `scene-02-result.jpg`, `recording.mp4` (first 25 s, re-encoded) |
 | Frame window for the measured step | `dumpsys gfxinfo … framestats`, inside the same Airtest run | `perf-framestats.txt` |
 | Cumulative counters for the same process | `dumpsys gfxinfo com.bobek.metronome` | `perf-summary.txt` |
 | Audio bank off the device | `scripts/collect_audio.sh` (inside the APK + `/sdcard/Android/data`) | `audio/` — 12 WAV files |
@@ -20,18 +20,19 @@ software GL** — a container GPU, not a phone GPU. App: `com.bobek.metronome` 1
 ## Result of this run
 
 ```
-120 frames, budget 16.67 ms:  p50 23.56 ms · p90 26.87 ms · p99 29.12 ms
-FAILING:  jank_pct_under_budget  89.167 %  limit   5.000 %
-FAILING:  p90_frame_ms           26.865 ms limit  16.000 ms
-PASSING:  p99_frame_ms           29.119 ms limit  34.000 ms
-FAILING:  jank_pct_from_device    5.510 %  limit   5.000 %   (272 frames, 15 janky)
+120 frames, budget 16.67 ms:  p50 31.03 ms · p90 50.08 ms · p99 60.39 ms
+FAILING:  jank_pct_under_budget  92.500 %  limit   5.000 %
+FAILING:  p90_frame_ms           50.076 ms limit  16.000 ms
+FAILING:  p99_frame_ms           60.389 ms limit  34.000 ms
+FAILING:  jank_pct_from_device   21.340 %  limit   5.000 %   (3912 frames, 835 janky)
 PASSING:  audio 12 files · silent 0 · clipped 0 · unreadable 0 · too short 0
 ```
 
 `report.html` shows the same numbers with the limit marked on each bar. The gate exits `1`.
-The two screenshots differ (`md5` 12f3bb97… and aa443eef…), so the swipe sequence did move
-the screen — unlike the first attempt, where both snapshots were byte-identical and the
-frame window was an idle screen.
+The beat is running for the whole measurement, so the window is an animating screen rather
+than an idle one, and the two snapshots differ (`md5` 5ba1363c… and c9258b4a…). An earlier
+attempt had both snapshots byte-identical — the action had not moved the screen — and that
+version is not kept here.
 
 ## What this run does not prove
 
@@ -48,5 +49,5 @@ frame window was an idle screen.
 - **Not a full session.** 120 frames in one window, on one emulator, on one app. A release
   decision needs several scenes, several devices, and one run per build.
 - **The summary is not the window.** `perf-summary.txt` is cumulative for the process since it
-  started (272 frames); the perf checks are computed from the 120-frame window in
+  started (3912 frames); the perf checks are computed from the 120-frame window in
   `perf-framestats.txt`. The two percentages are not comparable.

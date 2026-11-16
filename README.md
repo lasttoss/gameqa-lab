@@ -30,7 +30,7 @@ make fixtures-check  # the fixtures are what the generator produces
 ```
 
 Then open `docs/evidence/emulator-2026-11-16/report.html` in a browser — a real device
-run, one self-contained file, gate failed (89.2% of frames over budget on a software GPU).
+run, one self-contained file, gate failed (92.5% of frames over budget on a software GPU).
 
 `make demo` prints one block and exits 0. `make guard` prints
 `RESULT guard=armed baseline=PASS tightened=FAIL failed_checks=...` and exits 0 only
@@ -134,10 +134,10 @@ emulator: the device's `dumpsys gfxinfo` rows, 12 WAV files pulled over adb, the
 run log, the recording, and the gate report rendered from those files. Open
 `docs/evidence/emulator-2026-11-16/report.html` — it is one self-contained file.
 
-The gate failed there: 120 frames parsed, p50 23.56 ms, p90 26.87 ms, p99 29.12 ms, and
-89.2% of frames over the 16.67 ms budget. Software rasterisation is not a phone GPU, so
-that failure is the pipeline working, not the pipeline breaking. Two screenshots from that
-run differ, so the interaction really moved the screen. `docs/EXAMPLE-APK.md` covers the
+The gate failed there: 120 frames parsed, p50 31.03 ms, p90 50.08 ms, p99 60.39 ms, and
+92.5% of frames over the 16.67 ms budget. Software rasterisation is not a phone GPU, so
+that failure is the pipeline working, not the pipeline breaking. The beat was running for the
+whole window, and the two snapshots from that run differ, so the screen really was moving. `docs/EXAMPLE-APK.md` covers the
 tooling side, including what the run does not prove.
 
 ## Status

@@ -39,26 +39,26 @@
 </style></head><body>
 <h1>Build gate</h1>
 <div class="meta">measured on: audio, perf, summary · device: emulator-5554 · Android 13 · 1080x2340 · swiftshader (software GL) ·
- commit 766a55e · 2026-11-16 22:07 +07</div>
-<div class="status">GATE FAILED (5)</div>
+ commit daafa76 · 2026-11-16 22:12 +07</div>
+<div class="status">GATE FAILED (6)</div>
 
 <h2>Checks</h2>
 <table>
 <thead><tr><th>result</th><th>check</th><th>value</th><th>limit</th><th>against limit</th><th>note</th></tr></thead>
 <tbody>
-<tr><td><span class="badge fail">FAIL</span></td><td class="name">jank_pct_under_budget</td><td class="num">89.167</td><td class="num">5.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail">120 frames, budget 16.67 ms</td></tr>
-<tr><td><span class="badge fail">FAIL</span></td><td class="name">p90_frame_ms</td><td class="num">26.865</td><td class="num">16.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
-<tr><td><span class="badge pass">PASS</span></td><td class="name">p99_frame_ms</td><td class="num">29.119</td><td class="num">34.000</td><td><div class="bar"><span style="width:85.6%;background:#1f7a4d"></span><i style="left:85.6%"></i></div></td><td class="detail"></td></tr>
-<tr><td><span class="badge fail">FAIL</span></td><td class="name">jank_pct_from_device</td><td class="num">5.510</td><td class="num">5.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail">272 frames, 15 janky</td></tr>
-<tr><td><span class="badge fail">FAIL</span></td><td class="name">p90_frame_ms</td><td class="num">27.000</td><td class="num">16.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
-<tr><td><span class="badge fail">FAIL</span></td><td class="name">p99_frame_ms</td><td class="num">500.000</td><td class="num">34.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">jank_pct_under_budget</td><td class="num">92.500</td><td class="num">5.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail">120 frames, budget 16.67 ms</td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p90_frame_ms</td><td class="num">50.076</td><td class="num">16.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p99_frame_ms</td><td class="num">60.389</td><td class="num">34.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">jank_pct_from_device</td><td class="num">21.340</td><td class="num">5.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail">3912 frames, 835 janky</td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p90_frame_ms</td><td class="num">29.000</td><td class="num">16.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
+<tr><td><span class="badge fail">FAIL</span></td><td class="name">p99_frame_ms</td><td class="num">42.000</td><td class="num">34.000</td><td><div class="bar"><span style="width:100.0%;background:#b3261e"></span><i style="left:99.4%"></i></div></td><td class="detail"></td></tr>
 <tr><td><span class="badge pass">PASS</span></td><td class="name">audio_files</td><td class="num">12.000</td><td class="num">3.000</td><td><div class="bar"><span style="width:100.0%;background:#1f7a4d"></span><i style="left:99.4%"></i></div></td><td class="detail">12 decoded, 0 header-only, 0 unreadable</td></tr>
 <tr><td><span class="badge pass">PASS</span></td><td class="name">audio_silent_clips</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">rms below -40 dB: none</td></tr>
 <tr><td><span class="badge pass">PASS</span></td><td class="name">audio_clipped_clips</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">3+ samples at the rail: none</td></tr>
 <tr><td><span class="badge pass">PASS</span></td><td class="name">audio_unreadable</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">no header, nothing claimed: none</td></tr>
 <tr><td><span class="badge pass">PASS</span></td><td class="name">audio_too_short</td><td class="num">0.000</td><td class="num">0.000</td><td><div class="bar"><span style="width:2.0%;background:#1f7a4d"></span><i style="left:0.0%"></i></div></td><td class="detail">under 30 ms: none</td></tr>
 </tbody></table>
-<h2>Measured</h2><p class="muted">frames=120 p50=23.56ms p90=26.87ms p99=29.12ms | device summary: 272 frames, 15 janky | audio=12 files</p><h2>Thresholds</h2><p class="muted">config.json</p>
+<h2>Measured</h2><p class="muted">frames=120 p50=31.03ms p90=50.08ms p99=60.39ms | device summary: 3912 frames, 835 janky | audio=12 files</p><h2>Thresholds</h2><p class="muted">config.json</p>
 <h2>Run video</h2><p class="muted">recording.mp4 — frames inside this window are the ones measured above.</p><video controls preload="metadata" src="recording.mp4"></video>
 <h2>Scene checkpoints</h2><div class="shots"><figure><img src="scene-01-launch.jpg" alt="scene-01-launch"><figcaption>scene-01-launch</figcaption></figure><figure><img src="scene-02-result.jpg" alt="scene-02-result"><figcaption>scene-02-result</figcaption></figure></div>
 <footer>
